@@ -1,27 +1,33 @@
+/**
+ * General user routes
+ */
 const adminModel = require("../models/adminModel");
 const riderModel = require("../models/riderModel");
 const vehicleOwnerModel = require("../models/vehicleOwnerModel");
 const userRoute = require("express").Router();
 const verificationModel = require("../models/verificationModel");
 const Joi = require("joi");
-const ownerRoute = require("./owner/owner.routes");
 
+/**
+ * Get user profile
+ */
 userRoute.get("/", async (req, res) => {
   const { userId, accountType } = res.locals;
   try {
-    // const notifications = await Notification.find();
-
     let profile;
+    // riders
     if (accountType === "rider") {
       profile = await riderModel
         .findOne({ _id: userId }, "-password")
         .populate("vehicle");
     }
+    // owners
     if (accountType === "owner") {
       profile = await vehicleOwnerModel
         .findOne({ _id: userId }, "-password")
         .populate("wallet", "-pin -bank.pin");
     }
+    // admins
     if (
       accountType === "admin" ||
       accountType === "manger" ||
@@ -43,23 +49,29 @@ userRoute.get("/", async (req, res) => {
   }
 });
 
+/**
+ * Update user profile
+ */
 userRoute.put("/", async (req, res) => {
   const { userId, accountType } = res.locals;
   const profileUpdate = req.body;
   try {
     let newProfileUpdate;
+    // riders
     if (accountType === "rider") {
       newProfileUpdate = await riderModel.updateOne(
         { _id: userId },
         profileUpdate
       );
     }
+    // owners
     if (accountType === "owner") {
       newProfileUpdate = await vehicleOwnerModel.updateOne(
         { _id: userId },
         { $set: profileUpdate }
       );
     }
+    // admins
     if (
       accountType === "admin" ||
       accountType === "manger" ||
@@ -87,6 +99,9 @@ userRoute.put("/", async (req, res) => {
   }
 });
 
+/**
+ * Update user verification details
+ */
 userRoute.post("/get-verified", async (req, res) => {
   const schema = Joi.object({
     primaryID: Joi.string().required(),
@@ -145,6 +160,9 @@ userRoute.post("/get-verified", async (req, res) => {
 });
 
 // owner action routes
-userRoute.use("/owner", ownerRoute);
+userRoute.use("/owner", require("./owner/owner.routes"));
+
+// rider action routes
+userRoute.use("/rider", require("./rider/rider.routes"));
 
 module.exports = userRoute;

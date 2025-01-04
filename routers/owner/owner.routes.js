@@ -302,6 +302,17 @@ ownerRoute.delete(
   }
 );
 
+
+
+
+/**
+ * @description Endpoint to make a withdrawal from the owner's wallet
+ * @param {Number} req.body.amount - amount to withdraw
+ * @param {string} req.body.bank_account_id - id of bank account to withdraw to
+ * @param {string} req.body.withdrawal_pin - owner's withdrawal pin
+ * @returns {Object} - response object with message
+ * @throws {Error} - if there is an error processing the withdrawal
+ */
 ownerRoute.post(
   "/withdraw",
   isVerifiedUser,
@@ -370,5 +381,63 @@ ownerRoute.post(
     }
   }
 );
+
+
+ownerRoute.get('/dashboard', isVerifiedUser, isUserType('owner'), async (req, res) => {
+  const { userId } = res.locals;
+
+  try {
+    const wallet = await Wallet.findOne({ owner: userId });
+    const vehicles = await vehicleModel.find({ vehicle_owner: userId });
+    const bankAccounts = await bankAccountModel.find({ user_id: userId });
+
+    return res.status(200).send({
+      ok: true,
+      wallet,
+      vehicles,
+      bankAccounts,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({
+      ok: false,
+      message: "Error getting dashboard data",
+      error: `${error.message}`,
+    });
+  }
+});
+
+
+ownerRoute.get('/create-wallet', isVerifiedUser, isUserType('owner'), async (req, res) => {
+  const { userId } = res.locals;
+  try {
+    const wallet = await Wallet.findOne({ owner: userId });
+    if (wallet) {
+      return res.status(400).send({
+        ok: false,
+        message: "Wallet already exists",
+      });
+    }
+
+    const newWallet = new Wallet({
+      owner: userId,
+    });
+
+    const savedWallet = await newWallet.save();
+
+    return res.status(201).send({
+      ok: true,
+      savedWallet,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({
+      ok: false,
+      message: "Error creating wallet", error: `${error.message}`,
+    });
+  }
+  
+});
+
 
 module.exports = ownerRoute;

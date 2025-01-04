@@ -1,6 +1,33 @@
 const walletHistoryModel = require("../models/walletHistoryModel");
 const walletModel = require("../models/walletModel");
 
+async function CREATE_WALLET_CONTROLLER({ userId }) {
+  try {
+    let wallet = null;
+
+    wallet = await walletModel.create({ owner: userId });
+    if (wallet == null) {
+      throw {
+        okay: false,
+        message: "Error creating wallet",
+      };
+    }
+
+    return {
+      okay: true,
+      wallet,
+    };
+  } catch (error) {
+    console.log("Error CREATE_WALLET_CONTROLLER", error.message);
+
+    throw {
+      okay: false,
+      message: "Error creating wallet",
+      error: error.message,
+    };
+  }
+}
+
 async function GET_WALLET_CONTROLLER({ userId, accountType }) {
   try {
     let wallet = null;
@@ -61,7 +88,21 @@ async function GET_WALLET_HISTORY_CONTROLLER({ userId, accountType }) {
     };
   }
 }
-
+/**
+ * CREDIT_BUSINESS_WALLET_ON_ORDER
+ *
+ * @description
+ *    This function is called when a business order is processed.
+ *    It calculates the total amount of the order and then updates
+ *    the business wallet balance.
+ *    It also creates a new wallet history and sends a notification to
+ *    the business.
+ *
+ * @param {object} updateOrder - The order document that was processed.
+ * @param {object} io - The socket.io instance.
+ *
+ * @returns {object} - The updated wallet document.
+ */
 async function CREDIT_BUSINESS_WALLET_ON_ORDER(updateOrder, io) {
   try {
     const { business, sub_total, items, packages, discount } = updateOrder;
@@ -208,4 +249,87 @@ async function CREDIT_BUSINESS_WALLET_ON_ORDER(updateOrder, io) {
   }
 }
 
-module.exports = { GET_WALLET_CONTROLLER, GET_WALLET_HISTORY_CONTROLLER };
+const { Wallet, InstantWithdrawal, walletHistoryModel } = require("../models");
+const { initiateWithdrawal } = require("../routers/instantWithdrawalRoute");
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+
+async function WITHDRAW_FROM_WALLET({
+  userId,
+  accountNumber,
+  bankCode,
+  requested_amount,
+  pin,
+  bankAccountId,
+}) {
+  try {
+    // Find the user's wallet
+    const wallet = await Wallet.findOne({ owner: userId });
+    if (!wallet) throw new Error("Wallet not found");
+
+    // Check if withdrawal pin matches
+    if (wallet.pin !== pin) throw new Error("Incorrect withdrawal pin");
+
+    // Check if sufficient balance is available
+    if (wallet.balance < requested_amount)
+      throw new Error("Insufficient wallet balance");
+
+    // Find bank account details
+    const bankAccount = await bankAccountModel.findOne({
+      _id: bankAccountId,
+      user_id: userId,
+    });
+    if (!bankAccount) throw new Error("Bank account not found");
+
+    // Initiate withdrawal with Paystack
+    const recipient = await resolveAccount(accountNumber, bankCode);
+    const createdRecipient = await createRecipient(
+      recipient.account_number,
+      bankCode,
+      recipient.account_name
+    );
+    const withdrawalResponse = await initiateWithdrawal(
+      createdRecipient.recipient_code,
+      requested_amount
+    );
+
+    // Save withdrawal record
+    const instantWithdrawal = new InstantWithdrawal({
+      owner: userId,
+      amount: requested_amount,
+      currency: "NGN",
+      paymentId: withdrawalResponse.data.reference,
+      source: "wallet",
+      status: withdrawalResponse.data.status,
+      transfer_code: withdrawalResponse.data.transfer_code,
+      requested_time: new Date().toISOString(),
+    });
+
+    await instantWithdrawal.save();
+
+    // Update wallet balance
+    wallet.balance -= requested_amount;
+    await wallet.save();
+
+    // Create wallet history entry
+    await walletHistoryModel.create({
+      owner: userId,
+      wallet: wallet._id,
+      type: "debit",
+      description: "Withdraw From Wallet",
+      newBalance: wallet.balance,
+      oldBalance: wallet.balance + requested_amount,
+      amount: requested_amount,
+    });
+
+    return { ok: true, message: "Withdrawal initiated successfully" };
+  } catch (error) {
+    return { ok: false, message: error.message };
+  }
+}
+
+module.exports = {
+  GET_WALLET_CONTROLLER,
+  GET_WALLET_HISTORY_CONTROLLER,
+  CREDIT_BUSINESS_WALLET_ON_ORDER,
+  CREATE_WALLET_CONTROLLER,
+};

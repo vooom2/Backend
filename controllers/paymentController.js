@@ -160,16 +160,6 @@ async function CREATE_PAYMENT_FUNCTION({
   payment_due_date,
   payment,
 }) {
-  // console.log("CREATE_PAYMENT_FUNCTION", {
-  //   rider,
-  //   vehicle,
-  //   payment_amount,
-  //   description,
-  //   payment_status,
-  //   overdue_charges,
-  //   payment_due_date,
-  //   payment,
-  // });
   const createdPayment = await paymentModel.create({
     payment_amount,
     payment: payment || null,

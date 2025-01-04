@@ -1,5 +1,5 @@
 "use strict";
-require("./scheduler")
+require("./helpers/schedule.helper");
 require("dotenv").config();
 // require("./config/db");
 const express = require("express");

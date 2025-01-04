@@ -1,29 +1,94 @@
-const apiRoutes = require("express").Router();
-//
-const authRoute = require("./authRoute");
-const protectionPlan = require("./protectionPlanRoute");
-const vehicleRoute = require("./vehicleRoute");
-const { jwtValidator } = require("../middleware/jwt");
-const notificationRoute = require("./notificationRouter");
-const userRoute = require("./userRoute");
-const paymentRoute = require("./paymentRoute");
-const walletRoute = require("./walletRoute");
-const { instantWithdrawalRoute } = require("./instantWithdrawalRoute");
-const adminRoute = require("./adminRoute");
-const sendMail = require("./sendMail");
-const mediaRoutes = require("./media.routes");
+// routes/index.js
 
-apiRoutes.use("/sendMail/", sendMail);
-apiRoutes.use("/plans", protectionPlan);
-apiRoutes.use("/auth", authRoute);
-apiRoutes.use("/vehicle", vehicleRoute);
-apiRoutes.use("/notification", jwtValidator, notificationRoute);
-apiRoutes.use("/user", jwtValidator, userRoute);
-apiRoutes.use("/admin", jwtValidator, adminRoute);
-apiRoutes.use("/payment", jwtValidator, paymentRoute);
-apiRoutes.use("/wallet", jwtValidator, walletRoute);
-apiRoutes.use("/withdrawal", jwtValidator, instantWithdrawalRoute);
-apiRoutes.use("/media", jwtValidator, mediaRoutes);
-apiRoutes.use("/utils", require("./utility.Routes"));
+const { Router } = require("express");
+const { jwtValidator } = require("../middleware/jwt");
+
+// Route definitions with metadata
+const routes = [
+  {
+    path: "/plans",
+    router: require("./protectionPlanRoute"),
+    public: true,
+  },
+  {
+    path: "/auth",
+    router: require("./authRoute"),
+    public: true,
+  },
+  {
+    path: "/vehicle",
+    router: require("./vehicleRoute"),
+    public: true,
+  },
+  {
+    path: "/sendMail",
+    router: require("./sendMail"),
+    public: true,
+  },
+  {
+    path: "/utils",
+    router: require("./utility.Routes"),
+    public: true,
+  },
+  {
+    path: "/notification",
+    router: require("./notificationRouter"),
+  },
+  {
+    path: "/user",
+    router: require("./userRoute"),
+  },
+  {
+    path: "/admin",
+    router: require("./adminRoute"),
+  },
+  {
+    path: "/payment",
+    router: require("./paymentRoute"),
+  },
+  {
+    path: "/wallet",
+    router: require("./walletRoute"),
+  },
+  {
+    path: "/withdrawal",
+    router: require("./instantWithdrawalRoute").instantWithdrawalRoute,
+  },
+  {
+    path: "/media",
+    router: require("./media.routes"),
+  },
+  {
+    path: "/fleet-managers",
+    router: require("./fleetManager.routes"),
+  },
+];
+
+// Initialize router
+const apiRoutes = Router();
+
+// Register routes
+routes.forEach(({ path, router, public: isPublic }) => {
+  const middlewares = isPublic ? [] : [jwtValidator];
+  apiRoutes.use(path, ...middlewares, router);
+});
+
+// Error handling for undefined routes
+apiRoutes.use("*", (req, res) => {
+  res.status(404).json({
+    ok: false,
+    message: `Route ${req.originalUrl} not found`,
+  });
+});
+
+// Error handling middleware
+apiRoutes.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    ok: false,
+    message: "Internal server error",
+    error: process.env.NODE_ENV === "development" ? err.message : undefined,
+  });
+});
 
 module.exports = apiRoutes;
