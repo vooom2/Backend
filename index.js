@@ -29,6 +29,11 @@ app.use(helmet());
 // Request  routes
 app.use("/api", apiRoutes);
 
+// Ping route FOR KEEPING THE SERVER ALIVE
+app.get("/ping", (req, res) => {
+  res.send("pong");
+});
+
 
 const port = process.env.PORT || 5000;
 
