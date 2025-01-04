@@ -195,6 +195,7 @@ userAuth.post("/owner/register", async (req, res) => {
     const newUser = await userObject.save();
 
     if (newUser) {
+      CREATE_WALLET_CONTROLLER();
       const loginAccount = await accountLoginFunction("owner", email, password);
 
       res.status(200).json(loginAccount);
@@ -343,6 +344,11 @@ userAuth.post("/login", async (req, res) => {
         .status(tryLogin.statusCode || 200)
         .send({ ...tryLogin, userType: "rider" });
     }
+
+    return res.status(404).send({
+      okay: false,
+      message: "User not found",
+    });
   } catch (error) {
     console.log(error);
     return res.status(error.statusCode || 500).send({
