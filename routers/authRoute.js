@@ -167,17 +167,9 @@ userAuth.post("/owner/register", async (req, res) => {
     });
 
     if (user) {
-      if (user.email === email) {
-        return res
-          .status(409)
-          .send({ okay: false, message: "Email already exists" });
-      }
-
-      if (user.phone_number === phone_number) {
-        return res
-          .status(409)
-          .send({ okay: false, message: "Phone number already exists" });
-      }
+      return res
+        .status(409)
+        .send({ okay: false, message: "Email or phone number already exists" });
     }
 
     let userObject = {
@@ -254,19 +246,10 @@ userAuth.post("/rider/register", async (req, res) => {
       $or: [{ email: email }, { phone_number: phone_number }],
     });
 
-    if (user !== null) {
-      if (user.email === email) {
-        return res.status(400).send({
-          okay: false,
-          message: "User Already exist with this Email",
-        });
-      }
-      if (user.phone_number === phone_number) {
-        return res.status(400).send({
-          okay: false,
-          message: "User Already exist with this Phone Number",
-        });
-      }
+    if (user) {
+      return res
+        .status(409)
+        .send({ okay: false, message: "Email or phone number already exists" });
     }
 
     let userObject = {
