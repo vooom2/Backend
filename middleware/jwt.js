@@ -50,9 +50,13 @@ async function jwtValidator(req, res, next) {
       });
     }
 
-    res.locals.userId = uId;
-    res.locals.accountType = accountType;
-    res.locals.account_verified = user.account_verified;
+    res.locals = {
+      ...res.locals,
+      userId: uId,
+      accountType,
+      account_verified: user.account_verified,
+      email: user.email,
+    };
     next();
   } catch (error) {
 
