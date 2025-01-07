@@ -1,4 +1,6 @@
-const Paystack = require("paystack-api");
+const https = require("https");
+const { SEND_NOTIFICATION_FUNCTION } = require("./notificationController");
+const { inKobo, paystack } = require("../helpers/paystack.helper");
 const axios = require("axios");
 const paymentHistoryModel = require("../models/paymentHistoryModel");
 const paymentModel = require("../models/paymentModel");
@@ -23,21 +25,27 @@ async function CREATE_PAYMENT_HISTORY(payment) {
   }
 }
 
-const paystack = new Paystack({
-  secretKey: process.env.PAYSTACK_SECRET_KEY,
-  publicKey: process.env.PAYSTACK_PUBLIC_KEY,
-});
-
 const INITIALIZE_PAYMENT = async (req, res) => {
   try {
-    const { amount, email, riderId, vehicleId } = req.body;
+    const { payment_id } = req.body;
+    const { email } = res.locals;
+
+    const payment = await paymentModel.findById(payment_id);
+    if (!payment) {
+      return res.status(404).send("Payment not found");
+    }
+
+    const { payment_amount, rider, vehicle, description } = payment;
+
     const response = await paystack.transaction.initialize({
-      amount: amount * 100, // convert to kobo
+      amount: inKobo(payment_amount), // convert to kobo
       email,
       metadata: {
-        riderId,
-        vehicleId,
+        rider,
+        vehicle,
+        description,
       },
+      callback_url: `${process.env.BASE_URL}/api/payment/verify`,
     });
     res.send(response);
   } catch (error) {
@@ -236,8 +244,7 @@ async function CREATE_PAYMENT_HISTORY_FUNCTION({
 
 //   return await payment.save();
 // }
-const https = require("https");
-const { SEND_NOTIFICATION_FUNCTION } = require("./notificationController");
+
 // const vehicleModel = require("../models/vehicleModel");
 async function verificationPaymentFunction({ reference }) {
   // const headers = {
@@ -285,7 +292,6 @@ async function verificationPaymentFunction({ reference }) {
     });
 }
 
-
 // async function CREDIT_VEHICLE_OWNERS() {
 //   let activeVehicle = await vehicleModel.find({ active_vehicle: true, verified_vehicle: true, rider: { $ne: null } })
 
@@ -299,9 +305,8 @@ async function verificationPaymentFunction({ reference }) {
 //   // send email to the  owner mail
 // }
 
-
 async function CREDIT_VEHICLE_OWNERS() {
-  console.log("  CREDIT_VEHICLE_OWNERS()")
+  console.log("  CREDIT_VEHICLE_OWNERS()");
   const creditAmountPerVehicle = 13000;
 
   try {
@@ -309,7 +314,7 @@ async function CREDIT_VEHICLE_OWNERS() {
     const activeVehicles = await vehicleModel.find({
       active_vehicle: true,
       verified_vehicle: true,
-      rider: { $ne: null }
+      rider: { $ne: null },
     });
 
     // Group vehicles by their owners
@@ -345,21 +350,23 @@ async function CREDIT_VEHICLE_OWNERS() {
         description: "Monthly vehicle credit",
         newBalance: wallet.balance,
         oldBalance,
-        amount: creditAmount
+        amount: creditAmount,
       });
 
       // Create notification for the owner
       await notificationModel.create({
         message: `Your wallet has been credited with ${creditAmount.toLocaleString()} based on your active vehicles.`,
-        user: ownerId
+        user: ownerId,
       });
 
       // Send email to the owner
       const emailContent = `
         <h3>Credit Notification</h3>
         <p>Dear Vehicle Owner,</p>
-        <p>Your account has been credited with <b>${creditAmount.toLocaleString()}</b> based on your ${vehicles.length} active vehicles.</p>
-        <p>New Balance: ${wallet.balance.toLocaleString() }</p>
+        <p>Your account has been credited with <b>${creditAmount.toLocaleString()}</b> based on your ${
+        vehicles.length
+      } active vehicles.</p>
+        <p>New Balance: ${wallet.balance.toLocaleString()}</p>
         <p>Thank you for being a part of our service.</p>
       `;
 
@@ -371,7 +378,38 @@ async function CREDIT_VEHICLE_OWNERS() {
   }
 }
 
+/**
+ * @function GET_RIDER_PAYMENT_LIST
+ * @description Gets a list of all payments made by a rider
+ * @param {Object} req - The request object
+ * @param {string} req.body.userId - The id of the rider
+ * @param {Object} res - The response object
+ * @returns {Promise<void>}
+ * @throws {Error} If there is an error in the database query
+ */
+async function GET_RIDER_PAYMENT_LIST(req, res) {
+  try {
+    const { userId } = res.locals;
+    const page = req.query.page || 1;
+    const limit = req.query.limit || 10;
 
+    console.log({ userId });
+
+    const paymentHistory = await paymentModel.paginate(
+      { rider: userId },
+      {
+        page,
+        limit,
+        sort: { createdAt: -1 },
+      }
+    );
+
+    res.send(paymentHistory);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error.message);
+  }
+}
 
 module.exports = {
   CREATE_PAYMENT_HISTORY,
@@ -379,5 +417,7 @@ module.exports = {
   VERIFY_PAYMENT,
   VERIFY_PAYMENT_FUNCTION,
   CREATE_PAYMENT_FUNCTION,
-  CREATE_PAYMENT_HISTORY_FUNCTION, CREDIT_VEHICLE_OWNERS
+  CREATE_PAYMENT_HISTORY_FUNCTION,
+  CREDIT_VEHICLE_OWNERS,
+  GET_RIDER_PAYMENT_LIST,
 };

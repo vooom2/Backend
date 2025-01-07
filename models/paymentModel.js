@@ -1,5 +1,6 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
+const mongoosePaginate = require("mongoose-paginate-v2");
 const Schema = mongoose.Schema;
 
 const paymentSchema = new Schema(
@@ -30,5 +31,7 @@ const paymentSchema = new Schema(
     timestamps: true,
   }
 );
+paymentSchema.plugin(mongoosePaginate);
 
 module.exports = mongoose.model("Payment", paymentSchema);
+

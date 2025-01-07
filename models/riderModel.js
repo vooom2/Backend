@@ -18,6 +18,8 @@ const riderSchema = new Schema(
     email: {
       type: String,
       unique: true,
+      lowercase: true,
+      required: true,
     },
     player_id: {
       type: String,

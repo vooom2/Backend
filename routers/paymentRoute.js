@@ -1,6 +1,7 @@
 const {
   CREATE_PAYMENT_HISTORY_FUNCTION,
   CREATE_PAYMENT_FUNCTION,
+  VERIFY_PAYMENT_FUNCTION,
 } = require("../controllers/paymentController");
 const PaymentHistory = require("../models/paymentHistoryModel");
 const Payment = require("../models/paymentModel");
@@ -60,24 +61,28 @@ paymentRoute.post("/", async (req, res) => {
 
 paymentRoute.get("/", async (req, res) => {
   const { userId, accountType } = res.locals;
-  const { vehicle_id, rider_id, owner_id } = req.query
+  const { vehicle_id, rider_id, owner_id } = req.query;
   console.log({ userId, accountType });
   try {
     let query = {};
     if (accountType === "rider") {
-      query = { rider: userId }
-
+      query = { rider: userId };
     }
-    if (accountType === "admin" || accountType === "manger" || accountType === "compliance" || accountType === 'accountant') {
-      query = {}
+    if (
+      accountType === "admin" ||
+      accountType === "manger" ||
+      accountType === "compliance" ||
+      accountType === "accountant"
+    ) {
+      query = {};
       if (vehicle_id) {
-        query = { vehicle: vehicle_id }
+        query = { vehicle: vehicle_id };
       }
       if (rider_id) {
-        query = { rider: rider_id }
+        query = { rider: rider_id };
       }
       if (rider_id) {
-        query = { rider: owner_id }
+        query = { rider: owner_id };
       }
     }
 
@@ -121,15 +126,18 @@ paymentRoute.put("/", async (req, res) => {
         .send({ okay: false, message: "Payment not found" });
     }
 
-
-    if (accountType === "admin" || accountType === "manger" || accountType === "compliance" || accountType === 'accountant') {
-    // TODO: add a log of admin that make this action
+    if (
+      accountType === "admin" ||
+      accountType === "manger" ||
+      accountType === "compliance" ||
+      accountType === "accountant"
+    ) {
+      // TODO: add a log of admin that make this action
       if (getPayment.payment_amount !== amount) {
-
         return res.status(400).send({
           okay: false,
-          message: "Payment amount is not complete"
-        })
+          message: "Payment amount is not complete",
+        });
       }
     }
     getPayment.payment = payment;
@@ -148,8 +156,6 @@ paymentRoute.put("/", async (req, res) => {
       overdue_charges: getPayment.overdue_charges,
       payment: getPayment._id,
     });
-
-
 
     res.send({ okay: true });
   } catch (error) {
@@ -214,22 +220,11 @@ paymentRoute.get("/payment-history/payment/:paymentId", async (req, res) => {
   }
 });
 
+paymentRoute.post("/verify", async (req, res) => {
+  try {
+    req.send(VERIFY_PAYMENT_FUNCTION(req, res));
+  } catch (error) {
+    res.status(400).send(error.message);
+  }
+});
 module.exports = paymentRoute;
-
-// //
-// const updatePaymentHistory = async (payment) => {
-//   try {
-//     const paymentHistory = new PaymentHistory({
-//       rider: payment.rider,
-//       payment: payment._id,
-//       vehicle: payment.vehicle,
-//       payment_date: payment.payment_date,
-//       payment_amount: payment.payment_amount,
-//       payment_status: payment.payment_status,
-//     });
-//     await paymentHistory.save();
-//   } catch (error) {
-//     console.error(error);
-//   }
-// };
-// //
