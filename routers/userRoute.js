@@ -147,6 +147,19 @@ userRoute.post("/get-verified", async (req, res) => {
       });
     }
 
+    if (accountType === "rider") {
+      await riderModel.updateOne(
+        { _id: userId },
+        { $set: { verification_started: true } }
+      );
+    }
+    if (accountType === "owner") {
+      await vehicleOwnerModel.updateOne(
+        { _id: userId },
+        { $set: { verification_started: true } }
+      );
+    }
+
     return res.send({ ok: true, message: "Verification updated" });
   } catch (error) {
     console.log(error);

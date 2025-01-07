@@ -58,6 +58,10 @@ const riderSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    verification_started: {
+      type: Boolean,
+      default: false,
+    },
     verification_documents: [
       {
         document_url: {
