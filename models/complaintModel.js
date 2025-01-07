@@ -29,7 +29,7 @@ const complaintSchema = new mongoose.Schema(
     fleetManager: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "FleetManager",
-      required: true,
+      // required: true,
     },
     location: {
       type: String,
