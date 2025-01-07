@@ -110,11 +110,11 @@ const riderSchema = new Schema(
     // NOTE: change back to false
     account_verified: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     account_active: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     gender: {
       type: String,
