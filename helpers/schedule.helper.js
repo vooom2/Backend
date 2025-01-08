@@ -144,7 +144,7 @@ schedule.scheduleJob(weeklyRule, async () => {
   // Create payments for each vehicle
   vehicles.forEach((vehicle) => {
     const rider = vehicle.rider;
-    const paymentAmount = 21500; // Replace with actual amount
+    const paymentAmount = process.env.FIXED_REMITTANCE; // Replace with actual amount
     const description = "Weekly payment for vehicle " + vehicle.plate_number; // Replace with actual description
 
     CREATE_PAYMENT_FUNCTION({

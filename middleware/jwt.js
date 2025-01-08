@@ -69,7 +69,7 @@ async function jwtValidator(req, res, next) {
     }
 
     if (error.name === "JsonWebTokenError") {
-      return res.status(400).send({
+      return res.status(401).send({
         ok: false,
         message: "Invalid token. Please provide a valid token.",
       });
