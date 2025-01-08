@@ -8,9 +8,12 @@ const NotificationSchema = new mongoose.Schema(
       required: true,
     },
     user: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
-      default: "*",
+    },
+    global: {
+      type: Boolean,
+      default: false,
     },
     seen: {
       type: Boolean,
