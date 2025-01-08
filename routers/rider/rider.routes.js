@@ -98,8 +98,8 @@ riderRoute.get("/dashboard-stats", async (req, res) => {
         total_payments: total_payments?.grandTotal.toFixed(2),
         weekly_due,
         outstanding_payments: outstanding_payments?.grandTotal.toFixed(2),
-        repairs: 0,
-        inspection: 0,
+        inspection_count: 0,
+        days_to_next_inspection: 0,
       },
     });
   } catch (error) {
