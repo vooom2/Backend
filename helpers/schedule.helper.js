@@ -132,7 +132,7 @@ schedule.scheduleJob(minutelyRule, async () => {
   // Add your task logic here
 });
 
-schedule.scheduleJob(weeklyRule, async () => {
+schedule.scheduleJob(minutelyRule, async () => {
   console.log("Running weekly payments job ");
   // Get active vehicles
   const vehicles = await Vehicle.find({
