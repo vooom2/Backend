@@ -10,6 +10,9 @@ const vehicleModel = require("../models/vehicleModel");
 
 const paymentRoute = require("express").Router();
 
+
+
+
 paymentRoute.post("/", async (req, res) => {
   const { userId, accountType } = res.locals;
   const {
@@ -220,11 +223,4 @@ paymentRoute.get("/payment-history/payment/:paymentId", async (req, res) => {
   }
 });
 
-paymentRoute.post("/verify", async (req, res) => {
-  try {
-    req.send(VERIFY_PAYMENT_FUNCTION(req, res));
-  } catch (error) {
-    res.status(400).send(error.message);
-  }
-});
 module.exports = paymentRoute;

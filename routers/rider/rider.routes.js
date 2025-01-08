@@ -9,7 +9,10 @@ const { isUserType } = require("../../middleware/isVerifiedUser");
 const {
   GET_RIDER_PAYMENT_LIST,
   INITIALIZE_PAYMENT,
+  RIDER_PAYMENT_SUM,
 } = require("../../controllers/paymentController");
+const paymentModel = require("../../models/paymentModel");
+const vehicleModel = require("../../models/vehicleModel");
 // Example route to get rider profile
 
 riderRoute.use(isUserType("rider"));
@@ -76,6 +79,82 @@ riderRoute.post("/payments", async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).send({ ok: false, message: "Error initializing payment" });
+  }
+});
+
+riderRoute.get("/dashboard-stats", async (req, res) => {
+  const { userId } = res.locals;
+  //  total payments
+  try {
+    const total_payments = await RIDER_PAYMENT_SUM("paid", userId);
+    const outstanding_payments = await RIDER_PAYMENT_SUM("pending", userId);
+
+    //Due This week
+    const weekly_due = Number(process.env.FIXED_REMITTANCE).toFixed(2);
+
+    res.send({
+      ok: true,
+      data: {
+        total_payments: total_payments?.grandTotal.toFixed(2),
+        weekly_due,
+        outstanding_payments: outstanding_payments?.grandTotal.toFixed(2),
+        repairs: 0,
+        inspection: 0,
+      },
+    });
+  } catch (error) {
+    throw new Error(`Error calculating payment totals: ${error.message}`);
+  }
+});
+
+riderRoute.get("/vehicle", async (req, res) => {
+  const { userId } = res.locals;
+  try {
+    const vehicle = await vehicleModel.findOne({
+      rider: userId,
+      active_vehicle: true,
+      verified_vehicle: true,
+    });
+
+    if (!vehicle) {
+      return res.status(404).send({
+        ok: false,
+        message: "No approved vehicle assigned to rider",
+      });
+    }
+
+    res.send({ ok: true, vehicle });
+  } catch (error) {
+    console.log(error);
+    res
+      .status(500)
+      .send({ ok: false, message: "Error getting assigned vehicle" });
+  }
+});
+
+riderRoute.get("/vehicle/pending", async (req, res) => {
+  const { userId } = res.locals;
+  console.log(userId);
+  try {
+    const vehicle = await vehicleModel.findOne({
+      rider: userId,
+      verified_vehicle: true,
+      active_vehicle: false,
+    });
+
+    if (!vehicle) {
+      return res.status(404).send({
+        ok: false,
+        message: "No pending vehicle assigned to rider",
+      });
+    }
+
+    res.send({ ok: true, vehicle });
+  } catch (error) {
+    console.log(error);
+    res
+      .status(500)
+      .send({ ok: false, message: "Error getting assigned vehicle" });
   }
 });
 

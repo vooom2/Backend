@@ -17,6 +17,8 @@ const { isUserType } = require("../../middleware/isVerifiedUser");
 const vehicleModel = require("../../models/vehicleModel");
 const bankAccountModel = require("../../models/bankAccountModel");
 const Wallet = require("../../models/walletModel");
+const { WITHDRAW_FROM_WALLET } = require("../../controllers/WalletController");
+const {paystack} = require("../../helpers/paystack.helper")
 /**
  * @description Endpoint to host a vehicle
  * @param {Object} req.body - request body containing vehicle details
@@ -188,6 +190,7 @@ ownerRoute.post(
         account_number,
         bank_code,
       });
+
       if (existingAccount) {
         return res.status(400).send({
           ok: false,
@@ -198,6 +201,7 @@ ownerRoute.post(
       const bankAccounts = await bankAccountModel.countDocuments({
         user_id: userId,
       });
+
       if (bankAccounts >= 3) {
         return res.status(400).send({
           ok: false,
@@ -205,12 +209,30 @@ ownerRoute.post(
         });
       }
 
+      const createdRecipient = await paystack.transfer_recipient.create({
+        type: "nuban",
+        name: account_name,
+        account_number: account_number,
+        bank_code: bank_code,
+        currency: "NGN"
+      });
+
+      if (!createdRecipient.status) {
+        return res.status(400).send({
+          ok: false,
+          message: "Error creating recipient",
+        });
+      }
+
+      const recipient_code = createdRecipient.data.recipient_code;
+
       const newBankAccount = new bankAccountModel({
         account_name,
         account_number,
         bank_code,
         bank_name,
         user_id: userId,
+        recipient_code,
       });
 
       const savedBankAccount = await newBankAccount.save();
@@ -353,19 +375,34 @@ ownerRoute.post(
       if (!bankAccount) {
         return res.status(404).send({
           ok: false,
-          message: "Bank account not found",
+          message: "Bank account not found for user",
         });
       }
 
-      if (wallet.withdrawal_pin !== withdrawal_pin) {
+      if (wallet.pin != withdrawal_pin) {
         return res.status(401).send({
           ok: false,
-          message: "Incorrect withdrawal pin",
+          message: "Incorrect withdrawal pin "
         });
       }
 
       // Perform withdrawal logic here
-      // For example, create a withdrawal transaction and update balance
+
+      const withdrawal = await WITHDRAW_FROM_WALLET({
+        userId,
+        accountNumber: bankAccount.account_number,
+        requested_amount: amount,
+        bankAccount,
+        pin: withdrawal_pin,
+      });
+
+      if (!withdrawal.ok) {
+        return res.status(500).send({
+          ok: false,
+          message: "Error processing wallet withdrawal -1",
+          error: `${withdrawal.message}`,
+        });
+      }
 
       return res.status(200).send({
         ok: true,
@@ -408,36 +445,36 @@ ownerRoute.get('/dashboard', isVerifiedUser, isUserType('owner'), async (req, re
 });
 
 
-ownerRoute.get('/create-wallet', isVerifiedUser, isUserType('owner'), async (req, res) => {
-  const { userId } = res.locals;
-  try {
-    const wallet = await Wallet.findOne({ owner: userId });
-    if (wallet) {
-      return res.status(400).send({
-        ok: false,
-        message: "Wallet already exists",
-      });
-    }
+// ownerRoute.get('/create-wallet', isVerifiedUser, isUserType('owner'), async (req, res) => {
+//   const { userId } = res.locals;
+//   try {
+//     const wallet = await Wallet.findOne({ owner: userId });
+//     if (wallet) {
+//       return res.status(400).send({
+//         ok: false,
+//         message: "Wallet already exists",
+//       });
+//     }
 
-    const newWallet = new Wallet({
-      owner: userId,
-    });
+//     const newWallet = new Wallet({
+//       owner: userId,
+//     });
 
-    const savedWallet = await newWallet.save();
+//     const savedWallet = await newWallet.save();
 
-    return res.status(201).send({
-      ok: true,
-      savedWallet,
-    });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).send({
-      ok: false,
-      message: "Error creating wallet", error: `${error.message}`,
-    });
-  }
+//     return res.status(201).send({
+//       ok: true,
+//       savedWallet,
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     return res.status(500).send({
+//       ok: false,
+//       message: "Error creating wallet", error: `${error.message}`,
+//     });
+//   }
   
-});
+// });
 
 
 module.exports = ownerRoute;

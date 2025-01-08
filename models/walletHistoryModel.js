@@ -36,6 +36,10 @@ const walletHistorySchema = new Schema(
       type: Number,
       require: true,
     },
+    reference: {
+      type: Schema.Types.String,
+      require: true,
+    },
   },
   {
     timestamps: true,

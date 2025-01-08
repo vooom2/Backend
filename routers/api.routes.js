@@ -43,6 +43,11 @@ const routes = [
     router: require("./adminRoute"),
   },
   {
+    path: "/payment/verify",
+    router: require("./payments/payment.webhook"),
+    public: true,
+  },
+  {
     path: "/payment",
     router: require("./paymentRoute"),
   },

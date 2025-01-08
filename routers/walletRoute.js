@@ -69,9 +69,9 @@ walletRoute.get("/history", async (req, res) => {
   }
 });
 
-walletRoute.put("/create", async (req, res) => {
+walletRoute.post("/set-pin", async (req, res) => {
   const { userId, accountType } = res.locals;
-  const { pin, bank } = req.body;
+  const { pin } = req.body;
   if (accountType !== "owner") {
     console.log(accountType);
     return res.status(401).send({
@@ -81,115 +81,26 @@ walletRoute.put("/create", async (req, res) => {
   }
 
   try {
-    // check wallet for duplicate
-    const wallet = await Wallet.findOne({
-      owner: userId,
-    });
-
-    if (wallet !== null)
-      return res.status(400).send({
-        ok: false,
-        message: "User wallet Already exist",
-      });
-
-
-    if (!pin || pin === "")
-      return res.status(200).send({
-        ok: false,
-        message: "wallet Pin is required",
-      });
-    if (!bank || !bank.account_name || !bank.bank || !bank.account_number)
-      return res.status(200).send({
-        ok: false,
-        message: "withdraw bank is required",
-      });
-
-
-    const createWallet = new Wallet({
-      owner: userId,
-      pin, bank
-    });
-
-    const newWallet = await createWallet.save();
-
-    // if (wallet) {
-    const updatedOwner = await vehicleOwnerModel.findOneAndUpdate(
-      { _id: userId },
-      { wallet: newWallet._id },
-      { new: true }
-    ).populate("wallet", "-pin -bank.pin");
-
-    res.status(200).send({
-      ok: true,
-      updatedOwner,
-    });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).send({
-      ok: false,
-      message: "Error Creating Wallet",
-      error: error.message,
-    });
-  }
-});
-
-
-walletRoute.put("/update", async (req, res) => {
-  const { userId, accountType } = res.locals;
-  const { pin, bank } = req.body;
-  if (accountType !== "owner") {
-    console.log(accountType);
-    return res.status(401).send({
-      ok: true,
-      message: "Account is UnAuthorized to create wallet",
-    });
-  }
-
-  try {
-    // check wallet for duplicate
-    const wallet = await Wallet.findOne({
-      owner: userId,
-    });
-    if (wallet === null)
+    let wallet = await Wallet.findOne({ owner: userId });
+    if (wallet == null) {
       return res.status(404).send({
         ok: false,
-        message: "User wallet do not  exist",
+        message: "No wallet found",
       });
-
-//     // business wallet
-//     let businessWallet = business.wallet;
-
-    if (!pin || pin === "")
-      return res.status(200).send({
-        ok: false,
-        message: "wallet Pin is required",
-      });
-    if (!bank || !bank.account_name || !bank.bank || !bank.account_number)
-      return res.status(200).send({
-        ok: false,
-        message: "withdraw bank is required",
-      });
-
-
-    wallet.pin = pin
-
-    wallet.bank = bank
-
-    const updatedWallet = await wallet.save()
-
+    }
+    wallet.pin = pin;
+    wallet = await wallet.save();
     res.status(200).send({
       ok: true,
-      updatedWallet,
+      message: "Pin set successfully",
     });
   } catch (error) {
-    console.log(error);
-    return res.status(500).send({
+    res.status(500).send({
       ok: false,
-      message: "Error Creating Wallet",
+      message: "Error setting pin",
       error: error.message,
     });
   }
-});
-
+}); 
 
 module.exports = walletRoute;

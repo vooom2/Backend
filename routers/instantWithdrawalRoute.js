@@ -363,7 +363,7 @@ async function initiateWithdrawal(recipient_code, amount) {
 
   const data = {
     source: "balance",
-    amount: amount * 100, // Paystack API expects the amount in kobo (multiply by 100)
+    amount: inKobo(amount), // Paystack API expects the amount in kobo (multiply by 100)
     recipient: recipient_code,
     type: "nuban",
     currency: "NGN", // Replace with the appropriate currency code if different from NGN (Nigerian Naira)

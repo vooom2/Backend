@@ -8,6 +8,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const joi = require("joi");
 const { jwtValidator } = require("../middleware/jwt");
+const { CREATE_WALLET_CONTROLLER } = require("../controllers/WalletController");
 
 require("dotenv").config();
 const userAuth = require("express").Router();
@@ -187,7 +188,7 @@ userAuth.post("/owner/register", async (req, res) => {
     const newUser = await userObject.save();
 
     if (newUser) {
-      CREATE_WALLET_CONTROLLER();
+      CREATE_WALLET_CONTROLLER({ userId: newUser._id });
       const loginAccount = await accountLoginFunction("owner", email, password);
 
       res.status(200).json(loginAccount);
