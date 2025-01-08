@@ -23,6 +23,7 @@ const paymentSchema = new Schema(
       enum: ["pending", "paid", "overdue"],
       default: "pending",
     },
+    reference: { type: String, default: null },
     overdue_charges: { type: Number, default: 0 },
     payment_date: { type: Date, default: null },
     payment: { type: Schema.Types.Mixed, default: null },

@@ -114,7 +114,7 @@ const riderSchema = new Schema(
     },
     account_active: {
       type: Boolean,
-      default: false,
+      default: true,
     },
     gender: {
       type: String,
