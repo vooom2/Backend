@@ -54,7 +54,7 @@ async function accountLoginFunction(accountType, email, password) {
       throw {
         statusCode: 400,
         ok: false,
-        message: "Invalid login Parameter",
+        message: "Email or Passowrd is incorrect",
       };
     }
     const token = await jwt.sign(
