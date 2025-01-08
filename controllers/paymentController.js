@@ -1,6 +1,6 @@
 const https = require("https");
 const { SEND_NOTIFICATION_FUNCTION } = require("./notificationController");
-const { inKobo, paystack } = require("../helpers/paystack.helper");
+const { inKobo, inNaira, paystack } = require("../helpers/paystack.helper");
 const axios = require("axios");
 const paymentHistoryModel = require("../models/paymentHistoryModel");
 const paymentModel = require("../models/paymentModel");
@@ -8,7 +8,10 @@ const vehicleModel = require("../models/vehicleModel");
 const walletModel = require("../models/walletModel");
 const walletHistoryModel = require("../models/walletHistoryModel");
 const notificationModel = require("../models/notificationModel");
-
+const { CREDIT_OWNER_WALLET } = require("./WalletController");
+const failedTransactionsModel = require("../models/failedTransactionsModel");
+const vehicleOwnerModel = require("../models/vehicleOwnerModel");
+mongoose = require("mongoose");
 async function CREATE_PAYMENT_HISTORY(payment) {
   try {
     const paymentHistory = new paymentHistoryModel({
@@ -16,7 +19,7 @@ async function CREATE_PAYMENT_HISTORY(payment) {
       payment: payment.reference,
       vehicle: payment.metadata.vehicleId,
       payment_date: payment.createdAt,
-      payment_amount: payment.amount / 100, // convert from kobo
+      payment_amount: inKobo(payment.amount), // convert from kobo
       payment_status: payment.status,
     });
     await paymentHistory.save();
@@ -44,8 +47,10 @@ const INITIALIZE_PAYMENT = async (req, res) => {
         rider,
         vehicle,
         description,
+        payment_id,
       },
-      callback_url: `${process.env.BASE_URL}/api/payment/verify`,
+      callback_url:
+        process.env.API_BASEURL + `/api/payment/verify?paymentID=${payment_id}`,
     });
     res.send(response);
   } catch (error) {
@@ -56,17 +61,65 @@ const INITIALIZE_PAYMENT = async (req, res) => {
 
 const VERIFY_PAYMENT = async (req, res) => {
   try {
-    const { reference } = req.body;
-    const response = await verificationPaymentFunction({
-      reference,
-    });
-    if (response.status === "success") {
-      await updatePaymentHistory(response.data);
+    const { trxref, paymentID } = req.query;
+
+    const response = await paystack.transaction.verify({ reference: trxref });
+    console.log({ response });
+
+    //check if reference exist
+
+    if (response.status && response.data.status === "success") {
+      const payment = await paymentModel.findById(paymentID);
+      if (!payment || payment.payment_status === "paid") {
+        return res.redirect(
+          "/payment/failed?reason=payment not found or already resolved"
+        );
+      }
+
+      const vehicle = await vehicleModel.findById(payment.vehicle);
+      if (!vehicle) {
+        return res.redirect("/payment/failed?reason=vehicle not found");
+      }
+
+      const owner = await vehicleOwnerModel.findById(vehicle.vehicle_owner);
+      if (!owner) {
+        return res.redirect("/payment/failed?reason=vehicle owner not found");
+      }
+
+      console.log(owner);
+
+      let totalAmount =
+        (inNaira(response.data.amount) + payment.overdue_charges) * 0.75;
+
+      await CREDIT_OWNER_WALLET({
+        userId: owner._id,
+        amount: totalAmount, // convert to naira and remove 25% commission
+      });
+
+      await SEND_NOTIFICATION_FUNCTION(
+        owner._id,
+        `You have received a payment of ${totalAmount} for ${payment.description}`
+      );
+
+      payment.payment_status = "paid";
+      payment.reference = response.data.reference;
+      payment.payment = response.data;
+      await payment.save();
+
+      return res.redirect(process.env.FRONTEND_URL + "/payment/success");
     }
-    res.send(response);
+
+    new failedTransactionsModel({
+      paymentId: paymentID,
+      reason: "Payment failed",
+      status: response.data.status,
+      detail: response,
+    }).save();
+
+    return res.redirect("/payment/failed");
   } catch (error) {
     console.error(error);
-    res.status(500).send(error.message);
+    return res.status(500).send(error.message);
   }
 };
 
@@ -307,7 +360,7 @@ async function verificationPaymentFunction({ reference }) {
 
 async function CREDIT_VEHICLE_OWNERS() {
   console.log("  CREDIT_VEHICLE_OWNERS()");
-  const creditAmountPerVehicle = 13000;
+  const creditAmountPerVehicle = process.env.FIXED_REMITTANCE;
 
   try {
     // Fetch active and verified vehicles with owners
@@ -411,6 +464,116 @@ async function GET_RIDER_PAYMENT_LIST(req, res) {
   }
 }
 
+async function RIDER_PAYMENT_SUMs(type, userId) {
+  console.log(type, userId);
+
+  const result = await paymentModel.aggregate([
+    // Match only paid payments
+    {
+      $match: {
+        payment_status: type,
+        rider: userId,
+      },
+    },
+    // Group and sum both amounts and overdue charges
+    {
+      $group: {
+        _id: null,
+        totalAmount: { $sum: "$payment_amount" },
+        totalOverdueCharges: { $sum: "$overdue_charges" },
+        grandTotal: {
+          $sum: {
+            $add: ["$payment_amount", { $ifNull: ["$overdue_charges", 0] }],
+          },
+        },
+      },
+    },
+  ]);
+
+  // Return default values if no paid payments found
+  if (result.length === 0) {
+    return {
+      totalAmount: 0,
+      totalOverdueCharges: 0,
+      grandTotal: 0,
+    };
+  }
+
+  return {
+    totalAmount: result[0].totalAmount,
+    totalOverdueCharges: result[0].totalOverdueCharges,
+    grandTotal: result[0].grandTotal,
+  };
+}
+
+async function RIDER_PAYMENT_SUM(type, userId) {
+  try {
+    // Input validation
+    if (!type || !userId) {
+      throw new Error("Payment type and userId are required");
+    }
+
+    // Validate payment type (assuming valid types are 'paid', 'pending', etc.)
+    const validTypes = ["paid", "pending", "failed", "cancelled"];
+    if (!validTypes.includes(type.toLowerCase())) {
+      throw new Error("Invalid payment type");
+    }
+
+    const result = await paymentModel.aggregate([
+      {
+        $match: {
+          payment_status:
+            type === "paid" ? type.toLowerCase() : { $ne: "paid" },
+          rider: new mongoose.Types.ObjectId(userId),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalAmount: {
+            $sum: { $ifNull: ["$payment_amount", 0] },
+          },
+          totalOverdueCharges: {
+            $sum: { $ifNull: ["$overdue_charges", 0] },
+          },
+          grandTotal: {
+            $sum: {
+              $add: [
+                { $ifNull: ["$payment_amount", 0] },
+                { $ifNull: ["$overdue_charges", 0] },
+              ],
+            },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalAmount: { $round: ["$totalAmount", 2] },
+          totalOverdueCharges: { $round: ["$totalOverdueCharges", 2] },
+          grandTotal: { $round: ["$grandTotal", 2] },
+          count: 1,
+        },
+      },
+    ]);
+
+    // Return default values if no payments found
+    if (result.length === 0) {
+      return {
+        totalAmount: 0,
+        totalOverdueCharges: 0,
+        grandTotal: 0,
+        count: 0,
+      };
+    }
+
+    return result[0];
+  } catch (error) {
+    throw new Error(`Failed to calculate rider payment sum: ${error.message}`);
+  }
+}
+
 module.exports = {
   CREATE_PAYMENT_HISTORY,
   INITIALIZE_PAYMENT,
@@ -420,4 +583,5 @@ module.exports = {
   CREATE_PAYMENT_HISTORY_FUNCTION,
   CREDIT_VEHICLE_OWNERS,
   GET_RIDER_PAYMENT_LIST,
+  RIDER_PAYMENT_SUM,
 };
