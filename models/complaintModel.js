@@ -15,7 +15,7 @@ const complaintSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["vehicle-accident", "maintenance", "vio"],
+      // enum: ["vehicle-accident", "maintenance", "vio"],
       required: true,
     },
     date: {

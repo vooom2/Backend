@@ -21,7 +21,7 @@ const inspectionModel = require("../../models/inspectionModel");
 riderRoute.use(isUserType("rider"));
 riderRoute.post("/complaints", async (req, res) => {
   const schema = Joi.object({
-    category: Joi.string().valid("vehicle-accident").required(),
+    category: Joi.string().max(100).required(),
     date: Joi.date().iso().required(),
     time: Joi.string()
       .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
