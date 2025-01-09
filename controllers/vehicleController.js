@@ -81,12 +81,14 @@ async function CREATE_INSPECTION_FUNCTION({
   vehicle,
   description,
   status,
+  due_date,
 }) {
   const createdInspection = await inspectionModel.create({
     rider,
     vehicle,
     description,
     status,
+    due_date,
   });
 
   SEND_NOTIFICATION_FUNCTION(rider, description);

@@ -11,8 +11,11 @@ const {
   INITIALIZE_PAYMENT,
   RIDER_PAYMENT_SUM,
 } = require("../../controllers/paymentController");
-const paymentModel = require("../../models/paymentModel");
 const vehicleModel = require("../../models/vehicleModel");
+const downPaymentModel = require("../../models/downPaymentModel");
+const { paystack, inKobo } = require("../../helpers/paystack.helper");
+moment = require("moment");
+const inspectionModel = require("../../models/inspectionModel");
 // Example route to get rider profile
 
 riderRoute.use(isUserType("rider"));
@@ -92,6 +95,18 @@ riderRoute.get("/dashboard-stats", async (req, res) => {
     //Due This week
     const weekly_due = Number(process.env.FIXED_REMITTANCE).toFixed(2);
 
+    const latestInspection = await inspectionModel
+      .findOne({ rider: userId })
+      .sort({ createdAt: "desc" });
+    const latestInspectionDate = latestInspection
+      ? new Date(latestInspection.due_date)
+      : null;
+
+    //Days to next inspection
+    const days_to_next_inspection = latestInspectionDate
+      ? moment(latestInspectionDate).diff(moment(), "days")
+      : null;
+
     res.send({
       ok: true,
       data: {
@@ -99,7 +114,7 @@ riderRoute.get("/dashboard-stats", async (req, res) => {
         weekly_due,
         outstanding_payments: outstanding_payments?.grandTotal.toFixed(2),
         inspection_count: 0,
-        days_to_next_inspection: 0,
+        days_to_next_inspection: days_to_next_inspection || 0,
       },
     });
   } catch (error) {
@@ -155,6 +170,60 @@ riderRoute.get("/vehicle/pending", async (req, res) => {
     res
       .status(500)
       .send({ ok: false, message: "Error getting assigned vehicle" });
+  }
+});
+
+riderRoute.post("/vehicle/downpayment", async (req, res) => {
+  const { userId, email } = res.locals;
+  try {
+    const vehicle = await vehicleModel.findOne({
+      rider: userId,
+      active_vehicle: false,
+      verified_vehicle: true,
+    });
+
+    if (!vehicle) {
+      return res.status(404).send({
+        ok: false,
+        message: "No approved vehicle assigned to rider",
+      });
+    }
+
+    const payment = new downPaymentModel({
+      rider: userId,
+      vehicle: vehicle._id,
+      paid: false,
+    });
+
+    await payment.save();
+
+    const payment_url = await paystack.transaction.initialize({
+      amount: inKobo(process.env.DOWNPAYMENT), // convert to kobo
+      email,
+      metadata: {
+        rider: userId,
+        vehicle,
+        payment_id: payment._id,
+      },
+      callback_url:
+        process.env.API_BASEURL +
+        `/api/payment/verify/downpayment?paymentID=${payment._id}`,
+    });
+
+    if (!payment_url) {
+      return res.status(500).send({
+        ok: false,
+        message: "Error initializing payment gateway",
+      });
+    }
+
+    return res.send({
+      ok: true,
+      payment_url,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ ok: false, message: "Error initializing payment" });
   }
 });
 

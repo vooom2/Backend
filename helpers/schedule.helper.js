@@ -172,37 +172,68 @@ biWeeklyRule.minute = 0;
 // const biWeeklyRule = new schedule.RecurrenceRule();
 // biWeeklyRule.minute = 0; // Every hour at the 0th minute
 
-schedule.scheduleJob(biWeeklyRule, async () => {
-  console.log("Running bi-weekly job");
+// schedule.scheduleJob(biWeeklyRule, async () => {
+//   console.log("Running bi-weekly job");
 
-  // Determine the current week and month
-  const now = moment();
-  const currentMonth = now.format("MMMM"); // e.g., "October"
-  const weekOfMonth = Math.ceil(now.date() / 7); // Get the week of the month (1-5)
+//   // Determine the current week and month
+//   const now = moment();
+//   const currentMonth = now.format("MMMM"); // e.g., "October"
+//   const weekOfMonth = Math.ceil(now.date() / 7); // Get the week of the month (1-5)
 
-  // Determine if it's the first or second lap
-  const lapDescription = `${currentMonth}/${
-    weekOfMonth <= 2 ? "1st lap" : "2nd lap"
-  }`;
+//   // Determine if it's the first or second lap
+//   const lapDescription = `${currentMonth}/${
+//     weekOfMonth <= 2 ? "1st lap" : "2nd lap"
+//   }`;
 
-  console.log(`Current Lap: ${lapDescription}`);
+//   console.log(`Current Lap: ${lapDescription}`);
 
-  // Get active vehicles
+//   // Get active vehicles
+//   const vehicles = await Vehicle.find({
+//     rider: { $ne: null },
+//     verified_vehicle: true,
+//     active_vehicle: true,
+//   });
+
+//   // Create payments for each vehicle
+//   vehicles.forEach((vehicle) => {
+//     const rider = vehicle.rider;
+
+//     CREATE_INSPECTION_FUNCTION({
+//       rider,
+//       vehicle: vehicle._id,
+//       description: lapDescription,
+//       status: "Pending",
+//     });
+//   });
+// });
+
+
+
+schedule.scheduleJob(dailyRule, async () => {
   const vehicles = await Vehicle.find({
     rider: { $ne: null },
     verified_vehicle: true,
     active_vehicle: true,
   });
 
-  // Create payments for each vehicle
-  vehicles.forEach((vehicle) => {
-    const rider = vehicle.rider;
+  const riders = await Rider.find();
+  riders.forEach(async (rider) => {
+    const lastInspection = await Inspection.findOne({ rider: rider._id })
+      .sort("-due_date")
+      .limit(1);
 
-    CREATE_INSPECTION_FUNCTION({
-      rider,
-      vehicle: vehicle._id,
-      description: lapDescription,
-      status: "Pending",
-    });
+    if (lastInspection && lastInspection.due_date < new Date().setDate(new Date().getDate() - 1)) {
+    
+
+      CREATE_INSPECTION_FUNCTION({
+        rider: rider._id,
+        vehicle: lastInspection.vehicle,
+        description: lapDescription,
+        status: "Pending",
+        due_date: moment().add(14, "days").toISOString(),
+      });
+    }
   });
+
+  // Create payments for each vehicle
 });

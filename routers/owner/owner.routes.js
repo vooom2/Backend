@@ -18,7 +18,15 @@ const vehicleModel = require("../../models/vehicleModel");
 const bankAccountModel = require("../../models/bankAccountModel");
 const Wallet = require("../../models/walletModel");
 const { WITHDRAW_FROM_WALLET } = require("../../controllers/WalletController");
-const {paystack} = require("../../helpers/paystack.helper")
+const { paystack } = require("../../helpers/paystack.helper");
+const walletHistoryModel = require("../../models/walletHistoryModel");
+paymentModel = require("../../models/paymentModel");
+const {
+  ownerDashboardStats,
+  ownerVehicleStats,
+  ownerVehiclesAndDetails,
+} = require("../../controllers/ownerController");
+
 /**
  * @description Endpoint to host a vehicle
  * @param {Object} req.body - request body containing vehicle details
@@ -99,9 +107,15 @@ ownerRoute.get(
     const { userId, accountType } = res.locals;
 
     try {
-      const vehicles = await vehicleModel
-        .find({ vehicle_owner: userId })
-        .populate("rider", "name email");
+      const vehicles = await ownerVehiclesAndDetails({ userId });
+
+      if (!vehicles) {
+        return res.status(500).send({
+          ok: false,
+          message: "Error getting vehicle",
+        });
+      }
+
       return res.status(200).send({
         ok: true,
         vehicles,
@@ -111,6 +125,35 @@ ownerRoute.get(
       return res.status(500).send({
         ok: false,
         message: "Error getting vehicle",
+        error: `${error.message}`,
+      });
+    }
+  }
+);
+
+ownerRoute.get(
+  "/vehicles/stats",
+  isVerifiedUser,
+  isUserType("owner"),
+  async (req, res) => {
+    const { userId, accountType } = res.locals;
+    try {
+      const stats = await ownerVehicleStats({ userId });
+      if (!stats) {
+        return res.status(500).send({
+          ok: false,
+          message: "Error getting vehicle stats",
+        });
+      }
+      return res.status(200).send({
+        ok: true,
+        stats,
+      });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).send({
+        ok: false,
+        message: "Error getting vehicle stats",
         error: `${error.message}`,
       });
     }
@@ -134,16 +177,28 @@ ownerRoute.get(
     try {
       const vehicle = await vehicleModel
         .findOne({ _id: id, vehicle_owner: userId })
-        .populate("rider", "name email");
+        .populate("rider", "full_name email createdAt");
       if (!vehicle) {
         return res.status(404).send({
           ok: false,
           message: "Vehicle not found",
         });
       }
+
+      const payments = await paymentModel
+        .find({ vehicle: id })
+        .populate("rider", "full_name");
+      if (!payments) {
+        return res.status(404).send({
+          ok: false,
+          message: "No payments found for this vehicle",
+        });
+      }
+
       return res.status(200).send({
         ok: true,
         vehicle,
+        payments,
       });
     } catch (error) {
       console.log(error);
@@ -214,7 +269,7 @@ ownerRoute.post(
         name: account_name,
         account_number: account_number,
         bank_code: bank_code,
-        currency: "NGN"
+        currency: "NGN",
       });
 
       if (!createdRecipient.status) {
@@ -324,9 +379,6 @@ ownerRoute.delete(
   }
 );
 
-
-
-
 /**
  * @description Endpoint to make a withdrawal from the owner's wallet
  * @param {Number} req.body.amount - amount to withdraw
@@ -382,7 +434,7 @@ ownerRoute.post(
       if (wallet.pin != withdrawal_pin) {
         return res.status(401).send({
           ok: false,
-          message: "Incorrect withdrawal pin "
+          message: "Incorrect withdrawal pin ",
         });
       }
 
@@ -419,30 +471,42 @@ ownerRoute.post(
   }
 );
 
+/**
+ * @description Endpoint to get dashboard stats for the owner
+ * @returns {Object} - response object with message and stats
+ * @throws {Error} - if there is an error getting the dashboard stats
+ */
+ownerRoute.get(
+  "/dashboard",
+  isVerifiedUser,
+  isUserType("owner"),
+  async (req, res) => {
+    const { userId } = res.locals;
 
-ownerRoute.get('/dashboard', isVerifiedUser, isUserType('owner'), async (req, res) => {
-  const { userId } = res.locals;
+    try {
+      const stats = await ownerDashboardStats({ userId });
 
-  try {
-    const wallet = await Wallet.findOne({ owner: userId });
-    const vehicles = await vehicleModel.find({ vehicle_owner: userId });
-    const bankAccounts = await bankAccountModel.find({ user_id: userId });
+      if (!stats) {
+        return res.status(500).send({
+          ok: false,
+          message: "Error getting dashboard data",
+        });
+      }
 
-    return res.status(200).send({
-      ok: true,
-      wallet,
-      vehicles,
-      bankAccounts,
-    });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).send({
-      ok: false,
-      message: "Error getting dashboard data",
-      error: `${error.message}`,
-    });
+      return res.status(200).send({
+        ok: true,
+        stats,
+      });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).send({
+        ok: false,
+        message: "Error getting dashboard data",
+        error: `${error.message}`,
+      });
+    }
   }
-});
+);
 
 
 // ownerRoute.get('/create-wallet', isVerifiedUser, isUserType('owner'), async (req, res) => {

@@ -16,18 +16,21 @@ const inspectionSchema = new Schema(
     },
 
     description: { type: String, required: true },
-    reason: { type: String, },
+    reason: { type: String },
     status: {
       type: String,
       enum: ["Pending", "Pass", "Failed"],
       default: "Pending",
+    },
+    due_date: {
+      type: Date,
+      required: true,
     },
     inspector: {
       type: Schema.Types.ObjectId,
       ref: "Admin",
       // required: true,
       default: null,
-
     },
   },
   {
