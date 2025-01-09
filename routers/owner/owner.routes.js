@@ -17,7 +17,10 @@ const { isUserType } = require("../../middleware/isVerifiedUser");
 const vehicleModel = require("../../models/vehicleModel");
 const bankAccountModel = require("../../models/bankAccountModel");
 const Wallet = require("../../models/walletModel");
-const { WITHDRAW_FROM_WALLET } = require("../../controllers/WalletController");
+const {
+  WITHDRAW_FROM_WALLET,
+  GET_WALLET_STATS,
+} = require("../../controllers/WalletController");
 const { paystack } = require("../../helpers/paystack.helper");
 const walletHistoryModel = require("../../models/walletHistoryModel");
 paymentModel = require("../../models/paymentModel");
@@ -26,6 +29,8 @@ const {
   ownerVehicleStats,
   ownerVehiclesAndDetails,
 } = require("../../controllers/ownerController");
+const reportsModel = require("../../models/reportsModel");
+const inspectionModel = require("../../models/inspectionModel");
 
 /**
  * @description Endpoint to host a vehicle
@@ -195,10 +200,19 @@ ownerRoute.get(
         });
       }
 
+      const inspection = await inspectionModel.find({ vehicle: id });
+      if (!inspection) {
+        return res.status(404).send({
+          ok: false,
+          message: "No inspection found for this vehicle",
+        });
+      }
+
       return res.status(200).send({
         ok: true,
         vehicle,
         payments,
+        inspection,
       });
     } catch (error) {
       console.log(error);
@@ -507,6 +521,78 @@ ownerRoute.get(
     }
   }
 );
+
+ownerRoute.get(
+  "/wallet",
+  isVerifiedUser,
+  isUserType("owner"),
+  async (req, res) => {
+    const { userId, accountType } = res.locals;
+    try {
+      const walletStats = await GET_WALLET_STATS({ userId });
+
+      if (!walletStats.ok) {
+        return res.status(500).send({
+          ok: false,
+          message: walletStats.message,
+        });
+      }
+
+      return res.status(200).send({
+        ok: true,
+        data: walletStats.data,
+      });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).send({
+        ok: false,
+        message: "Error getting waallet",
+        error: `${error.message}`,
+      });
+    }
+  }
+);
+
+// get owner wallet details
+ownerRoute.get(
+  "/reports",
+  isVerifiedUser,
+  isUserType("owner"),
+  async (req, res) => {
+    const { userId } = res.locals;
+    try {
+      const { page = 1, limit = 10 } = req.query;
+      const reports = await reportsModel.paginate(
+        { owner: userId },
+        {
+          page,
+          limit,
+          sort: { createdAt: -1 },
+        }
+      );
+
+      if (!reports) {
+        return res.status(404).send({
+          ok: false,
+          message: "No reports found",
+        });
+      }
+
+      return res.status(200).send({
+        ok: true,
+        reports,
+      });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).send({
+        ok: false,
+        message: "Error getting reports",
+        error: `${error.message}`,
+      });
+    }
+  }
+);
+
 
 
 // ownerRoute.get('/create-wallet', isVerifiedUser, isUserType('owner'), async (req, res) => {

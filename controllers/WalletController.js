@@ -2,6 +2,7 @@ const walletHistoryModel = require("../models/walletHistoryModel");
 const walletModel = require("../models/walletModel");
 const { paystack, inKobo, inNaira } = require("../helpers/paystack.helper");
 const InstantWithdrawal = require("../models/instantWithdrawalModel");
+const paymentModel = require("../models/paymentModel");
 
 async function CREATE_WALLET_CONTROLLER({ userId }) {
   try {
@@ -371,6 +372,60 @@ async function WITHDRAW_FROM_WALLET({
   }
 }
 
+async function GET_WALLET_STATS({ userId }) {
+  try {
+    const wallet = await walletModel.findOne(
+      { owner: userId },
+      { balance: 1, _id: 0, pin: 1 }
+    );
+
+    const pin =
+      wallet && wallet.pin ? (wallet.pin = true) : (wallet.pin = false);
+
+    if (!wallet) throw new Error("Wallet not found");
+
+    const totalWithdrawnRecords = await walletHistoryModel.find({
+      owner: userId,
+      type: "debit",
+    });
+
+    const totalWithdrawn = totalWithdrawnRecords.reduce(
+      (sum, record) => sum + record.amount,
+      0
+    );
+
+    const startOfWeek = moment().startOf("week").toDate();
+    const endOfWeek = moment().endOf("week").toDate();
+    const walletHistory = await walletHistoryModel.find({
+      owner: userId,
+      type: "credit",
+      createdAt: { $gte: startOfWeek, $lte: endOfWeek },
+    });
+
+    const totalThisWeek = walletHistory.reduce(
+      (sum, record) => sum + record.amount,
+      0
+    );
+
+    const unpaidPayments = await paymentModel.find({
+      owner: userId,
+      payment_status: { $ne: "paid" },
+    });
+
+    const totalUnpaid = unpaidPayments.reduce(
+      (sum, payment) => sum + payment.payment_amount,
+      0
+    );
+
+    return {
+      ok: true,
+      data: { wallet, totalWithdrawn, totalThisWeek, totalUnpaid },
+    };
+  } catch (error) {
+    return { ok: false, message: error.message };
+  }
+}
+
 module.exports = {
   GET_WALLET_CONTROLLER,
   GET_WALLET_HISTORY_CONTROLLER,
@@ -378,4 +433,5 @@ module.exports = {
   CREATE_WALLET_CONTROLLER,
   CREDIT_OWNER_WALLET,
   WITHDRAW_FROM_WALLET,
+  GET_WALLET_STATS,
 };

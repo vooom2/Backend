@@ -2,6 +2,7 @@
  * General user routes
  */
 const adminModel = require("../models/adminModel");
+const notificationModel = require("../models/notificationModel");
 const riderModel = require("../models/riderModel");
 const vehicleOwnerModel = require("../models/vehicleOwnerModel");
 const userRoute = require("express").Router();
@@ -171,6 +172,32 @@ userRoute.post("/get-verified", async (req, res) => {
   }
   return res.send({ ok: true });
 });
+
+userRoute.get("/notifications", async (req, res) => {
+  const { userId } = res.locals;
+  try {
+    const notifications = await notificationModel
+      .find({
+        $or: [{ global: true }, { user: userId }],
+      })
+      .sort({ createdAt: -1 });
+
+    if (!notifications) {
+      return res
+        .status(404)
+        .send({ ok: false, message: "Notifications not found" });
+    }
+    return res.send({ ok: true, notifications });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({
+      ok: false,
+      message: "Error retrieving notifications",
+      error: error.message,
+    });
+  }
+});
+
 
 // owner action routes
 userRoute.use("/owner", require("./owner/owner.routes"));
