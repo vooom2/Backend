@@ -13,6 +13,7 @@ const {
 const {
   CREATE_INSPECTION_FUNCTION,
 } = require("../controllers/vehicleController");
+inspectionModel = require("../models/inspectionModel");
 
 // Daily schedule
 const dailyRule = new schedule.RecurrenceRule();
@@ -207,8 +208,6 @@ biWeeklyRule.minute = 0;
 //   });
 // });
 
-
-
 schedule.scheduleJob(dailyRule, async () => {
   const vehicles = await Vehicle.find({
     rider: { $ne: null },
@@ -218,13 +217,14 @@ schedule.scheduleJob(dailyRule, async () => {
 
   const riders = await Rider.find();
   riders.forEach(async (rider) => {
-    const lastInspection = await Inspection.findOne({ rider: rider._id })
+    const lastInspection = await InspectionModel.findOne({ rider: rider._id })
       .sort("-due_date")
       .limit(1);
 
-    if (lastInspection && lastInspection.due_date < new Date().setDate(new Date().getDate() - 1)) {
-    
-
+    if (
+      lastInspection &&
+      lastInspection.due_date < new Date().setDate(new Date().getDate() - 1)
+    ) {
       CREATE_INSPECTION_FUNCTION({
         rider: rider._id,
         vehicle: lastInspection.vehicle,
