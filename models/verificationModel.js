@@ -48,7 +48,6 @@ const verification_documents = new Schema({
       },
       primaryID: {
         type: String,
-        required: true,
       },
       submittedAt: {
         type: Date,
