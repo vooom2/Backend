@@ -28,6 +28,9 @@ const riderSchema = new Schema(
       type: Number,
       unique: true,
     },
+    occupation: {
+      type: String,
+    },
     password: {
       type: String,
       required: true,

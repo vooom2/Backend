@@ -56,6 +56,25 @@ userRoute.get("/", async (req, res) => {
 userRoute.put("/", async (req, res) => {
   const { userId, accountType } = res.locals;
   const profileUpdate = req.body;
+  
+  const schema = Joi.object({
+    img: Joi.string().uri().required(),
+    gender: Joi.string().valid("male", "female", "other").required(),
+    state: Joi.string().min(2).max(100).required(),
+    address: Joi.string().min(5).max(255).required(),
+    occupation: Joi.string().min(3).max(100).required(),
+    country: Joi.string().min(2).max(100).required(),
+  });
+
+  const { error } = schema.validate(profileUpdate);
+  if (error) {
+    return res.status(400).send({
+      ok: false,
+      message: error.details[0].message,
+    });
+  }
+
+
   try {
     let newProfileUpdate;
     // riders

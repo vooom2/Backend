@@ -88,6 +88,9 @@ const vehicleOwnerSchema = new Schema(
       type: String,
       default: "",
     },
+    occupation: {
+      type: String,
+    },
     // DOB: {
     //   type: Schema.Types.Mixed,
     //   default: {
