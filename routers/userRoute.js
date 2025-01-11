@@ -127,9 +127,9 @@ userRoute.post("/get-verified", async (req, res) => {
     primaryID: Joi.string().required(),
     secondaryID: Joi.string(),
     guarantor_documents: Joi.object({
-      full_name: Joi.string().required(),
-      email: Joi.string().email().required(),
-      phone_number: Joi.number().required(),
+      full_name: Joi.string(),
+      email: Joi.string().email(),
+      phone_number: Joi.number(),
       organization: Joi.string(),
       location: Joi.string(),
       gender: Joi.string(),
@@ -138,7 +138,7 @@ userRoute.post("/get-verified", async (req, res) => {
       address: Joi.string(),
       img: Joi.string(),
       workID: Joi.string(),
-      primaryID: Joi.string().required(),
+      primaryID: Joi.string(),
     }),
   });
 
