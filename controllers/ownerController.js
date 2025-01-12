@@ -3,6 +3,7 @@ const riderModel = require("../models/riderModel");
 const vehicleModel = require("../models/vehicleModel");
 const walletHistoryModel = require("../models/walletHistoryModel");
 const { startOfWeek, endOfWeek } = require("date-fns");
+paymentModel = require("../models/paymentModel");
 
 const ownerDashboardStats = async ({ userId }) => {
   try {
@@ -174,10 +175,26 @@ const ownerVehiclesAndDetails = async ({ userId }) => {
           vehicle: vehicle._id,
         });
 
+        const weekStart = moment().startOf("week").toDate().toISOString();
+        const weekEnd = moment().endOf("week").toDate().toISOString();
+
+        console.log(weekStart, weekEnd);
+        const payments = await paymentModel.find(
+          {
+            vehicle: vehicle._id,
+            createdAt: {
+              $gte: weekStart,
+              $lte: weekEnd,
+            },
+          },
+          { payment_amount: 1, payment_status: 1, _id: 0 }
+        );
+
         return {
           ...vehicle.toObject(),
           rider: rider ? rider.toObject() : null,
           inspection_count: inspection ? inspection : 0,
+          remittance: payments,
         };
       })
     );
