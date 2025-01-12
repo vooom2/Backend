@@ -15,7 +15,7 @@ const isVerifiedUser = async (req, res, next) => {
     const user = await userModels[accountType].findById(userId);
 
     if (!user || !user.account_verified) {
-      return res.status(403).send({
+      return res.status(400).send({
         ok: false,
         message: "Account is not verified",
       });
@@ -36,7 +36,7 @@ const isUserType = (type) => async (req, res, next) => {
   try {
     const { accountType } = res.locals;
     if (type !== accountType) {
-      return res.status(403).send({
+      return res.status(400).send({
         ok: false,
         message: "Account type is not allowed",
       });
