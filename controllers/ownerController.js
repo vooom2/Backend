@@ -167,6 +167,9 @@ const ownerVehiclesAndDetails = async ({ userId }) => {
     const vehiclesWithRiderAndInspection = await Promise.all(
       vehicles.map(async (vehicle) => {
         const rider = await riderModel.findOne({ _id: vehicle.rider });
+        if (rider) {
+          rider.password = null;
+        }
         const inspection = await inspectionModel.countDocuments({
           vehicle: vehicle._id,
         });
