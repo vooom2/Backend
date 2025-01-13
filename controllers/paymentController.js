@@ -78,12 +78,18 @@ const VERIFY_PAYMENT = async (req, res) => {
 
       const vehicle = await vehicleModel.findById(payment.vehicle);
       if (!vehicle) {
-        return res.redirect("/payment/failed?reason=vehicle not found");
+        return res.redirect(
+          process.env.PUBLIC_BASEURL +
+            "/dashboard/payments/failed?reason=vehicle not found"
+        );
       }
 
       const owner = await vehicleOwnerModel.findById(vehicle.vehicle_owner);
       if (!owner) {
-        return res.redirect("/payment/failed?reason=vehicle owner not found");
+        return res.redirect(
+          process.env.PUBLIC_BASEURL +
+            "/dashboard/payments/failed?reason=vehicle owner not found"
+        );
       }
 
       console.log(owner);
@@ -106,7 +112,9 @@ const VERIFY_PAYMENT = async (req, res) => {
       payment.payment = response.data;
       await payment.save();
 
-      return res.redirect(process.env.FRONTEND_URL + "/payment/success");
+      return res.redirect(
+        process.env.PUBLIC_BASEURL + "/dashboard/payments/success"
+      );
     }
 
     new failedTransactionsModel({
