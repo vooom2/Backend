@@ -31,6 +31,7 @@ const {
 } = require("../../controllers/ownerController");
 const reportsModel = require("../../models/reportsModel");
 const inspectionModel = require("../../models/inspectionModel");
+const InstantWithdrawal = require("../../models/instantWithdrawalModel");
 
 /**
  * @description Endpoint to host a vehicle
@@ -51,14 +52,14 @@ ownerRoute.post(
         model: Joi.string().min(3).max(100).required(),
         state: Joi.string().min(3).max(100).required(),
         lga: Joi.string().min(3).max(100).required(),
-        vehicle_type: Joi.string().min(3).max(100).required(),
+        // vehicle_type: Joi.string().min(3).max(100).required(),
         color: Joi.string().min(3).max(100).required(),
-        plate_number: Joi.number().min(100).required(),
+        // plate_number: Joi.number().min(100).required(),
         vehicle_number: Joi.string().min(10).max(200).required(),
-        vehicle_images: Joi.array().items(Joi.string().uri()).min(1).required(),
+        // vehicle_images: Joi.array().items(Joi.string().uri()).min(1).required(),
         chasis_state: Joi.string().min(3).max(100).required(),
         initial_mileage: Joi.number().min(0).required(),
-        features: Joi.array().items(Joi.string()).min(1).required(),
+        features: Joi.object().required(),
         documents: Joi.object()
           .keys({
             vio: Joi.string().uri().required(),
@@ -479,6 +480,50 @@ ownerRoute.post(
       return res.status(500).send({
         ok: false,
         message: "Error processing withdrawal",
+        error: `${error.message}`,
+      });
+    }
+  }
+);
+
+/**
+ * @description Endpoint to get instant withdrawal history
+ * @returns {Object} - response object with message and instant withdrawal history
+ * @throws {Error} - if there is an error getting the instant withdrawal history
+ */
+ownerRoute.get(
+  "/withdrawal-history",
+  isVerifiedUser,
+  isUserType("owner"),
+  async (req, res) => {
+    const { userId } = res.locals;
+
+    try {
+      const instantWithdrawalHistory = await InstantWithdrawal.find({
+        owner: userId,
+      }).sort({ createdAt: -1 });
+
+      if (!instantWithdrawalHistory) {
+        return res.status(404).send({
+          ok: false,
+          message: "No instant withdrawal history found",
+        });
+      }
+
+      return res.status(200).send({
+        ok: true,
+        history: {
+          ...instantWithdrawalHistory,
+          account_number: "1125436581",
+          account_name: "Henry Topher",
+          bank_name: "Access Bank",
+        },
+      });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).send({
+        ok: false,
+        message: "Error getting instant withdrawal history",
         error: `${error.message}`,
       });
     }
