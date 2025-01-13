@@ -76,7 +76,7 @@ const vehicleSchema = new Schema(
       type: String,
     },
     features: {
-      type: Array,
+      type: Object,
     },
     health_status: {
       body_exterior: {

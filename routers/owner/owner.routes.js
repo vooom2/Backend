@@ -447,7 +447,7 @@ ownerRoute.post(
       }
 
       if (wallet.pin != withdrawal_pin) {
-        return res.status(401).send({
+        return res.status(400).send({
           ok: false,
           message: "Incorrect withdrawal pin ",
         });
