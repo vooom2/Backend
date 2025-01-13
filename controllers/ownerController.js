@@ -163,7 +163,11 @@ const ownerVehicleStats = async ({ userId }) => {
 
 const ownerVehiclesAndDetails = async ({ userId }) => {
   try {
-    const vehicles = await vehicleModel.find({ vehicle_owner: userId });
+    const vehicles = await vehicleModel.find({
+      vehicle_owner: userId,
+      active_vehicle: true,
+      verified_vehicle: true,
+    });
 
     const vehiclesWithRiderAndInspection = await Promise.all(
       vehicles.map(async (vehicle) => {
