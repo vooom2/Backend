@@ -55,9 +55,9 @@ paymentHook.get("/downpayment", async (req, res) => {
 
       await vehicle.save();
 
-      return res.redirect(process.env.FRONTEND_URL + "/downpayment/success");
+      return res.redirect(process.env.PUBLIC_BASEURL + "/dashboard/success");
     } else {
-      return res.redirect(process.env.FRONTEND_URL + "/downpayment/failed");
+      return res.redirect(process.env.PUBLIC_BASEURL + "/dashboard/failed");
     }
   } catch (error) {
     return res.status(400).send(error.message);
