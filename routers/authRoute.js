@@ -136,12 +136,16 @@ userAuth.post("/owner/register", async (req, res) => {
       .required(),
     password: joi
       .string()
-      .min(6)
-      .invalid("password123", "iloveyou", "nigeria", "123456", "12345")
+      .min(8)
+      .pattern(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/
+      )
       .messages({
         "string.invalid":
           "You have used a common password. Please use another password.",
         "string.min": "Password must be at least 6 characters long.",
+        "string.pattern.base":
+          "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.",
       })
       .required(),
     full_name: joi.string().max(100).required(),
@@ -217,12 +221,16 @@ userAuth.post("/rider/register", async (req, res) => {
       .required(),
     password: joi
       .string()
-      .min(6)
-      .invalid("password123", "iloveyou", "nigeria", "123456", "12345")
+      .min(8)
+      .pattern(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/
+      )
       .messages({
         "string.invalid":
           "You have used a common password. Please use another password.",
         "string.min": "Password must be at least 6 characters long.",
+        "string.pattern.base":
+          "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.",
       })
       .required(),
     full_name: joi.string().max(100).required(),
@@ -348,12 +356,16 @@ userAuth.put("/change-password", jwtValidator, async (req, res) => {
     oldPassword: joi.string().min(6).required(),
     newPassword: joi
       .string()
-      .min(6)
-      .invalid("password123", "iloveyou", "nigeria", "123456", "12345")
+      .min(8)
+      .pattern(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/
+      )
       .messages({
         "string.invalid":
           "You have used a common password. Please use another password.",
         "string.min": "Password must be at least 6 characters long.",
+        "string.pattern.base":
+          "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.",
       })
       .required(),
   });

@@ -62,7 +62,7 @@ userRoute.put("/", async (req, res) => {
     gender: Joi.string().valid("male", "female", "other").required(),
     state: Joi.string().min(2).max(100).required(),
     address: Joi.string().min(5).max(255).required(),
-    occupation: Joi.string().min(3).max(100).required(),
+    occupation: Joi.string().min(3).max(100),
     country: Joi.string().min(2).max(100).required(),
   });
 

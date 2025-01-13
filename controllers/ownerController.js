@@ -165,8 +165,8 @@ const ownerVehiclesAndDetails = async ({ userId }) => {
   try {
     const vehicles = await vehicleModel.find({
       vehicle_owner: userId,
-      active_vehicle: true,
-      verified_vehicle: true,
+      // active_vehicle: true,
+      // verified_vehicle: true,
     });
 
     const vehiclesWithRiderAndInspection = await Promise.all(
