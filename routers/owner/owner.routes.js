@@ -166,6 +166,32 @@ ownerRoute.get(
   }
 );
 
+ownerRoute.get("/vehicles/payments/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const payments = await paymentModel.paginate(
+      { vehicle: id },
+      {
+        select: "payment_amount description createdAt payment_due_date",
+        page,
+        limit,
+      }
+    );
+    return res.status(200).send({
+      ok: true,
+      payments,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({
+      ok: false,
+      message: "Error getting vehicle payments",
+      error: `${error.message}`,
+    });
+  }
+});
+
 /**
  * @description Endpoint to get a vehicle by ID
  * @param {string} req.params.id - id of the vehicle
