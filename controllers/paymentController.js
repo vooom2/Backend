@@ -50,7 +50,8 @@ const INITIALIZE_PAYMENT = async (req, res) => {
         payment_id,
       },
       callback_url:
-        process.env.API_BASEURL + `/api/payment/verify?paymentID=${payment_id}`,
+        process.env.API_BASEURL +
+        `/api/payment/verify?paymentID=${payment_id}&type=rider_deposit`,
     });
     res.send(response);
   } catch (error) {
@@ -61,7 +62,7 @@ const INITIALIZE_PAYMENT = async (req, res) => {
 
 const VERIFY_PAYMENT = async (req, res) => {
   try {
-    const { trxref, paymentID } = req.query;
+    const { trxref, paymentID, type } = req.query;
 
     const response = await paystack.transaction.verify({ reference: trxref });
     console.log({ response });
@@ -72,23 +73,21 @@ const VERIFY_PAYMENT = async (req, res) => {
       const payment = await paymentModel.findById(paymentID);
       if (!payment || payment.payment_status === "paid") {
         return res.redirect(
-          "/payment/failed?reason=payment not found or already resolved"
+          process.env.PUBLIC_BASEURL + "rider/dashboard/payfailed?reason=1"
         );
       }
 
       const vehicle = await vehicleModel.findById(payment.vehicle);
       if (!vehicle) {
         return res.redirect(
-          process.env.PUBLIC_BASEURL +
-            "/dashboard/payments/failed?reason=vehicle not found"
+          process.env.PUBLIC_BASEURL + "rider/dashboard/payfailed?reason=2"
         );
       }
 
       const owner = await vehicleOwnerModel.findById(vehicle.vehicle_owner);
       if (!owner) {
         return res.redirect(
-          process.env.PUBLIC_BASEURL +
-            "/dashboard/payments/failed?reason=vehicle owner not found"
+          process.env.PUBLIC_BASEURL + "rider/dashboard/payfailed?reason=3"
         );
       }
 
@@ -113,7 +112,7 @@ const VERIFY_PAYMENT = async (req, res) => {
       await payment.save();
 
       return res.redirect(
-        process.env.PUBLIC_BASEURL + "/dashboard/payments/success"
+        process.env.PUBLIC_BASEURL + "rider/dashboard/paysuccess"
       );
     }
 
@@ -124,7 +123,9 @@ const VERIFY_PAYMENT = async (req, res) => {
       detail: response,
     }).save();
 
-    return res.redirect("/payment/failed");
+    return res.redirect(
+      process.env.PUBLIC_BASEURL + "rider/dashboard/payfailed?reason=4"
+    );
   } catch (error) {
     console.error(error);
     return res.status(500).send(error.message);

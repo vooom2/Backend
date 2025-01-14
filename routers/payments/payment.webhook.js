@@ -25,7 +25,10 @@ paymentHook.get("/downpayment", async (req, res) => {
       // Find and update downpayment document
       const downPayment = await downPaymentModel.findById(paymentID);
       if (!downPayment) {
-        return res.status(404).send("Downpayment not found");
+        return res.redirect(
+          process.env.PUBLIC_BASEURL + "rider/dashboard/payfailed?reason=A1"
+        );
+        // downpayment not found
       }
 
       downPayment.paid = true;
@@ -37,7 +40,10 @@ paymentHook.get("/downpayment", async (req, res) => {
       console.log(downPayment.vehicle);
       const vehicle = await vehicleModel.findById(downPayment.vehicle);
       if (!vehicle) {
-        return res.status(404).send("Vehicle not found");
+        return res.redirect(
+          process.env.PUBLIC_BASEURL + "rider/dashboard/payfailed?reason=A2"
+        );
+        //vehicle not found
       }
 
       vehicle.active_vehicle = true;
@@ -55,9 +61,9 @@ paymentHook.get("/downpayment", async (req, res) => {
 
       await vehicle.save();
 
-      return res.redirect(process.env.PUBLIC_BASEURL + "/dashboard/success");
+      return res.redirect(process.env.PUBLIC_BASEURL + "rider/dashboard/paysuccess");
     } else {
-      return res.redirect(process.env.PUBLIC_BASEURL + "/dashboard/failed");
+      return res.redirect(process.env.PUBLIC_BASEURL + "rider/dashboard/payfailed?reason=A3");
     }
   } catch (error) {
     return res.status(400).send(error.message);
