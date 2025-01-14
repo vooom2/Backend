@@ -61,7 +61,9 @@ paymentHook.get("/downpayment", async (req, res) => {
 
       await vehicle.save();
 
-      return res.redirect(process.env.PUBLIC_BASEURL + "rider/dashboard/paysuccess");
+      return res.redirect(
+        process.env.PUBLIC_BASEURL + "rider/dashboard/downpaysuccess"
+      );
     } else {
       return res.redirect(process.env.PUBLIC_BASEURL + "rider/dashboard/payfailed?reason=A3");
     }
