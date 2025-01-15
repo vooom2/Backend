@@ -132,7 +132,7 @@ minutelyRule.second = 0; // Every minute at the start of the minute
 const hourlyRule = new schedule.RecurrenceRule();
 hourlyRule.minute = 0; // Every hour at the start of the hour
 
-schedule.scheduleJob(hourly, async () => {
+schedule.scheduleJob(minutelyRule, async () => {
   console.log("Running weekly payments job ");
   // Get active vehicles
   const vehicles = await Vehicle.find({
