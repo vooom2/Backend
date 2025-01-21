@@ -111,6 +111,10 @@ const riderSchema = new Schema(
       },
     ],
     // NOTE: change back to false
+    
+    otp:{
+      type: Number
+    },
     account_verified: {
       type: Boolean,
       default: false,

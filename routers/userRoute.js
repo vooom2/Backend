@@ -217,6 +217,27 @@ userRoute.get("/notifications", async (req, res) => {
   }
 });
 
+userRoute.get("/notifications/:id", async (req, res) => {
+  const { userId } = res.locals;
+  try {
+    const { id } = req.params;
+    const notification = await notificationModel.findOne({ _id: id });
+    if (!notification) {
+      return res.status(404).send({ ok: false, message: "Notification not found" });
+    }
+    notification.seen = true;
+    await notification.save();
+    return res.send({ ok: true });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({
+      ok: false,
+      message: "Error retrieving notifications",
+      error: error.message,
+    });
+  }
+});
+
 
 // owner action routes
 userRoute.use("/owner", require("./owner/owner.routes"));

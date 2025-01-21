@@ -9,6 +9,10 @@ const jwt = require("jsonwebtoken");
 const joi = require("joi");
 const { jwtValidator } = require("../middleware/jwt");
 const { CREATE_WALLET_CONTROLLER } = require("../controllers/WalletController");
+const transport = require("../helpers/mail.helper");
+const onboarding_template = require("../utils/tpl/onboard");
+const { pw_reset_controller } = require("../controllers/authController");
+
 
 require("dotenv").config();
 const userAuth = require("express").Router();
@@ -176,12 +180,13 @@ userAuth.post("/owner/register", async (req, res) => {
         .status(409)
         .send({ okay: false, message: "Email or phone number already exists" });
     }
-
+    const otp = Math.floor(1000 + Math.random() * 9000);
     let userObject = {
       full_name,
       email,
       phone_number,
       password: securePassword,
+      otp,
     };
     // return res.send({ userObject });
 
@@ -194,6 +199,20 @@ userAuth.post("/owner/register", async (req, res) => {
     if (newUser) {
       CREATE_WALLET_CONTROLLER({ userId: newUser._id });
       const loginAccount = await accountLoginFunction("owner", email, password);
+
+      transport.sendMail({
+        from: "chida.codes@gmail.com",
+        to: email,
+        subject: "Verify your email",
+        html: onboarding_template.owner({
+          name: full_name, otp}),
+      }, (error, info) => {
+        if (error) {
+          console.log(error);
+        } else {
+          console.log("Email sent: " + info.response);
+        }
+      });
 
       res.status(200).json(loginAccount);
     }
@@ -261,11 +280,14 @@ userAuth.post("/rider/register", async (req, res) => {
         .send({ okay: false, message: "Email or phone number already exists" });
     }
 
+    const otp = Math.floor(1000 + Math.random() * 9000);
+
     let userObject = {
       full_name,
       email,
       phone_number,
       password: securePassword,
+      otp
     };
 
     //   // Create new user without referral
@@ -278,6 +300,22 @@ userAuth.post("/rider/register", async (req, res) => {
 
     if (newUser) {
       const loginAccount = await accountLoginFunction("rider", email, password);
+
+     await  transport.sendMail({
+        from: "chida.codes@gmail.com",
+        to: email,
+        subject: "Verify your email",
+        html: onboarding_template.rider({
+          name: full_name, otp: otp}),
+      }, (error, info) => {
+        if (error) {
+          console.log(error);
+        } else {
+          console.log("Email sent: " + info.response);
+        }
+      });
+
+
 
       res.status(200).json(loginAccount);
     }
@@ -426,6 +464,191 @@ userAuth.put("/change-password", jwtValidator, async (req, res) => {
 });
 
 
+userAuth.post("/pwreset",  async (req, res) => {
+  const schema = joi.object().keys({
+    email: joi.string().email().required(),
+  });
+
+  const { error } = schema.validate(req.body);
+
+  if (error) {
+    return res.status(400).send({
+      okay: false,
+      message: error.details[0].message,
+    });
+  }
+
+  const { email } = req.body;
+
+  try {
+    const response  = await pw_reset_controller(email);
+
+    if (!response.status) {
+      return res.status(404).send({
+        okay: false,
+        message: response.message,
+      });
+    }
+
+    return res.status(200).send({
+      okay: true,
+      message: "Password reset email sent",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(error.statusCode || 500).send({
+      okay: false,
+      message: error.message || "Error sending password reset email",
+      error: error.error,
+    });
+  }
+});
+
+
+userAuth.post("/pwreset-new", async (req, res) => {
+  const schema = joi.object().keys({
+    token: joi.string().required(),
+    password: joi
+      .string()
+      .min(8)
+      .pattern(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/
+      )
+      .messages({
+        "string.pattern.base":
+          "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.",
+      })
+      .required(),
+  });
+
+  const { error } = schema.validate(req.body);
+  if (error) {
+    return res.status(400).send({
+      okay: false,
+      message: error.details[0].message,
+    });
+  }
+
+  const { token, password } = req.body;
+  console.log(token)
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { email } = decoded;
+
+    const userModels = {
+      owner: vehicleOwnerModel,
+      rider: riderModel,
+    };
+
+    let user;
+    for (const model of Object.values(userModels)) {
+      user = await model.findOne({ email });
+      if (user) break;
+    }
+
+    if (!user) {
+      return res.status(404).send({
+        okay: false,
+        message: "User not found",
+      });
+    }
+
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).send({
+      okay: true,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res.status(400).send({
+        okay: false,
+        message: "Token is expired",
+      });
+    }
+    console.log(error);
+    res.status(error.statusCode || 500).send({
+      okay: false,
+      message: error.message || "Error resetting password",
+      error: error.error,
+    });
+  }
+});
+
+userAuth.post("/verify-otp", async(req, res)=>{
+  const schema = joi.object().keys({
+    email: joi.string().email().required(),
+    otp: joi.number().required(),
+  });
+
+  const { error } = schema.validate(req.body);
+  if (error) {
+    return res.status(400).send({
+      okay: false,
+      message: error.details[0].message,
+    });
+  }
+
+  const { email, otp } = req.body;
+
+  try {
+    const userModels = {
+      owner: vehicleOwnerModel,
+      rider: riderModel,
+    };
+
+    let user;
+    for (const model of Object.values(userModels)) {
+      user = await model.findOne({ email });
+      if (user) break;
+    }
+
+    if (!user) {
+      return res.status(404).send({
+        okay: false,
+        message: "User not found",
+      });
+    }
+
+    if (user.otp !== otp) {
+      console.log(otp)
+      return res.status(400).send({
+        okay: false,
+        message: "OTP is incorrect",
+      });
+    }
+
+    user.otp = Math.floor(1000 + Math.random() * 9000);
+    user.email_verified = true
+    await user.save();
+
+    const token = jwt.sign({ email: user.email, _id: user._id }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    
+
+    res.status(200).send({
+      okay: true,
+      message: "Email verified successfully",
+      profile: user.profile,
+      user_type: user.account_type,
+      token: user.token,
+    });
+
+
+  } catch (error) {
+    console.log(error);
+    res.status(error.statusCode || 500).send({
+      okay: false,
+      message: error.message || "Error resetting OTP",
+      error: error.error,
+    });
+  }
+})
+
+
 
 
 
@@ -441,8 +664,8 @@ const verifyInvitation = (token) => {
     console.error("Invalid or expired token:", error.message);
     throw {
       okay: false,
-      message: "Invalid or expired invitation token"
-    }
+      message: "Invalid or expired invitation token",
+    };
     return null;
   }
 };

@@ -91,46 +91,15 @@ const vehicleOwnerSchema = new Schema(
     occupation: {
       type: String,
     },
-    // DOB: {
-    //   type: Schema.Types.Mixed,
-    //   default: {
-    //     day: "",
-    //     month: "",
-    //     year: "",
-    //   },
-    // },
-    // user_location: {
-    //   type: Schema.Types.Mixed,
-    //   default: {
-    //     lat: null,
-    //     long: null,
-    //     state: "",
-    //     country: "",
-    //     local: "",
-    //     houseNumber: null,
-    //     floorNumber: null,
-    //   },
-    // },
-    // saved_location: {
-    //   type: Schema.Types.Array,
-    //   default: [],
-    // },
-    // user_saved_cards: {
-    //   type: Schema.Types.Array,
-    // },
-    // settings: {
-    //   type: Schema.Types.Mixed,
-    //   required: true,
-    //   default: {
-    //     location_permission: false,
-    //     notification_permission: false,
-    //   },
-    // },
+    otp: {
+      type: Number,
+    },
+ 
 
-    // deleted: {
-    //   type: Boolean,
-    //   default: false,
-    // },
+    deleted: {
+      type: Boolean,
+      default: false,
+    },
 
     protection_plan_subscription: {
       type: Schema.Types.ObjectId,

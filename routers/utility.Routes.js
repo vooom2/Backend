@@ -2,6 +2,7 @@ const Joi = require("joi");
 const utilityRoutes = require("express").Router();
 const paystack = require("paystack-api")(process.env.PAYSTACK_SECRET_KEY);
 
+
 utilityRoutes.get("/banks", async (req, res) => {
   const banks = await paystack.misc.list_banks();
   res.send({ okay: true, banks });
@@ -51,5 +52,7 @@ utilityRoutes.post("/banks/resolve-account", async (req, res) => {
     });
   }
 });
+
+
 
 module.exports = utilityRoutes;
