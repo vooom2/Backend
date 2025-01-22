@@ -16,6 +16,7 @@ const downPaymentModel = require("../../models/downPaymentModel");
 const { paystack, inKobo } = require("../../helpers/paystack.helper");
 moment = require("moment");
 const inspectionModel = require("../../models/inspectionModel");
+const locationSpecsModel = require("../../models/locationSpecsModel");
 // Example route to get rider profile
 
 riderRoute.use(isUserType("rider"));
@@ -92,8 +93,46 @@ riderRoute.get("/dashboard-stats", async (req, res) => {
     const total_payments = await RIDER_PAYMENT_SUM("paid", userId);
     const outstanding_payments = await RIDER_PAYMENT_SUM("pending", userId);
 
+    const isAssignedVehicle = await vehicleModel.findOne({ rider: userId });
+    if (isAssignedVehicle) {
+      const riderVehicle = await vehicleModel.findOne({ rider: userId }).populate(
+        "state"
+      );
+  
+  
+      const locationSpecs = await locationSpecsModel.findOne({
+        name: riderVehicle.state,
+      });
+
+      
+    console.log({
+      locationSpecs,
+      state:riderVehicle.state
+    })
+
+      if (!locationSpecs) {
+        return res.status(400).send({
+          ok: false,
+          message: "No location spec found for this vehicle",
+        });
+      }
+
+     remittance = locationSpecs.remittance
+     downPayment = locationSpecs.downPayment
+
+    }else{
+      remittance = 0
+      downPayment = 0
+
+      // error if location specs not found
+    }
+
+
+
+
+
     //Due This week
-    const weekly_due = Number(process.env.FIXED_REMITTANCE).toFixed(2);
+    const weekly_due = Number(remittance).toFixed(2);
 
     const latestInspection = await inspectionModel
       .findOne({ rider: userId })
@@ -115,6 +154,7 @@ riderRoute.get("/dashboard-stats", async (req, res) => {
         outstanding_payments: outstanding_payments?.grandTotal.toFixed(2),
         inspection_count: 0,
         days_to_next_inspection: days_to_next_inspection || 0,
+        downPayment: Number(downPayment).toFixed(2),
       },
     });
   } catch (error) {
@@ -189,6 +229,19 @@ riderRoute.post("/vehicle/downpayment", async (req, res) => {
       });
     }
 
+    const spec = await locationSpecsModel.findOne({
+      name: vehicle.state,
+    });
+
+    if (!spec) {
+      return res.status(404).send({
+        ok: false,
+        message: "No location spec found for this vehicle",
+      });
+    }
+
+    const downPayment = spec.downPayment;
+
     const payment = new downPaymentModel({
       rider: userId,
       vehicle: vehicle._id,
@@ -198,7 +251,7 @@ riderRoute.post("/vehicle/downpayment", async (req, res) => {
     await payment.save();
 
     const payment_url = await paystack.transaction.initialize({
-      amount: inKobo(process.env.DOWNPAYMENT), // convert to kobo
+      amount: inKobo(downPayment), // convert to kobo
       email,
       metadata: {
         rider: userId,

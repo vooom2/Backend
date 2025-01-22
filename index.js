@@ -5,7 +5,7 @@ require("dotenv").config();
 const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
-
+const morgan = require("morgan");
 const bodyParser = require("body-parser");
 const { default: mongoose } = require("mongoose");
 const apiRoutes = require("./routers/api.routes");
@@ -15,7 +15,8 @@ const app = express();
 mongoose.set("strictQuery", false);
 
 app.use(bodyParser.json());
-
+app.use(helmet());
+app.use(morgan("dev"));
 // Cors
 const corsOptions = {
   origin: "*",

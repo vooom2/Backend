@@ -14,6 +14,7 @@ const {
   CREATE_INSPECTION_FUNCTION,
 } = require("../controllers/vehicleController");
 const inspectionModel = require("../models/inspectionModel");
+const locationSpecsModel = require("../models/locationSpecsModel");
 
 // Daily schedule
 const dailyRule = new schedule.RecurrenceRule();
@@ -132,7 +133,7 @@ minutelyRule.second = 0; // Every minute at the start of the minute
 const hourlyRule = new schedule.RecurrenceRule();
 hourlyRule.minute = 0; // Every hour at the start of the hour
 
-schedule.scheduleJob(weeklyRule, async () => {
+schedule.scheduleJob(minutelyRule, async () => {
   console.log("Running weekly payments job ");
   // Get active vehicles
   const vehicles = await Vehicle.find({
@@ -142,9 +143,16 @@ schedule.scheduleJob(weeklyRule, async () => {
   });
 
   // Create payments for each vehicle
-  vehicles.forEach((vehicle) => {
+  vehicles.forEach(async (vehicle) => {
     const rider = vehicle.rider;
-    const paymentAmount = process.env.FIXED_REMITTANCE; // Replace with actual amount
+    const locationSpecs = await locationSpecsModel.findOne({
+      name: vehicle.state,
+    })
+
+    return;
+
+    const remittance = locationSpecs.remittance
+    const paymentAmount = remittance; // Replace with actual amount
     const description = "Weekly payment for vehicle " + vehicle.plate_number; // Replace with actual description
 
     CREATE_PAYMENT_FUNCTION({

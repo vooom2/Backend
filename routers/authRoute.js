@@ -153,6 +153,8 @@ userAuth.post("/owner/register", async (req, res) => {
       })
       .required(),
     full_name: joi.string().max(100).required(),
+    gender: joi.string().valid("male", "female").required(),
+
   });
 
   const { error } = schema.validate(req.body);
@@ -253,6 +255,7 @@ userAuth.post("/rider/register", async (req, res) => {
       })
       .required(),
     full_name: joi.string().max(100).required(),
+    gender: joi.string().valid("male", "female").required(),
   });
 
   const { error } = schema.validate(req.body);
