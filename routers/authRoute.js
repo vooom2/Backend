@@ -182,7 +182,7 @@ userAuth.post("/owner/register", async (req, res) => {
         .status(409)
         .send({ okay: false, message: "Email or phone number already exists" });
     }
-    const otp = Math.floor(1000 + Math.random() * 9000);
+    const otp = Math.floor(1000 + Math.random() * 90000);
     let userObject = {
       full_name,
       email,
@@ -283,7 +283,7 @@ userAuth.post("/rider/register", async (req, res) => {
         .send({ okay: false, message: "Email or phone number already exists" });
     }
 
-    const otp = Math.floor(1000 + Math.random() * 9000);
+    const otp = Math.floor(1000 + Math.random() * 90000);
 
     let userObject = {
       full_name,
@@ -625,7 +625,7 @@ userAuth.post("/verify-otp", async(req, res)=>{
       });
     }
 
-    user.otp = Math.floor(1000 + Math.random() * 9000);
+    user.otp = Math.floor(1000 + Math.random() * 90000);
     user.email_verified = true
     await user.save();
 
