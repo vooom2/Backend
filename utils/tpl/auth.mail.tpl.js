@@ -25,7 +25,7 @@ const auth_mail_template = {
                               Kindly use the button below to reset your password.
                               <br/>
                               <br/>
-                              <a href="${process.env.PUBLIC_BASEURL}verify?token=${data?.otp}}" style="border-radius:8px; padding:10px 15px; color:#fff; background:#000; text-decoration:none">Reset Password</a>
+                              <a href="${process.env.PUBLIC_BASEURL}verify?token=${data?.otp}" style="border-radius:8px; padding:10px 15px; color:#fff; background:#000; text-decoration:none">Reset Password</a>
                               <br/>
                               <br/>
                               If this was not you, please ignore this email.
