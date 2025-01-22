@@ -149,7 +149,7 @@ schedule.scheduleJob(minutelyRule, async () => {
       name: vehicle.state,
     })
 
-    return;
+    // return;
 
     const remittance = locationSpecs.remittance
     const paymentAmount = remittance; // Replace with actual amount
