@@ -98,6 +98,7 @@ async function CREATE_INSPECTION_FUNCTION({
 }
 
 async function hostVehicle(body, userId) {
+  console.log(body, userId);
   try {
     const {
       make,
@@ -111,10 +112,10 @@ async function hostVehicle(body, userId) {
       initial_mileage,
       documents,
       features,
-    } = body;
+    } = body.vehicle;
 
     const vehicle = await vehicleModel.create({
-      vehicle_owner: userId,
+      vehicle_owner: body.userId,
       make,
       model,
       state,

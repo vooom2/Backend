@@ -32,6 +32,9 @@ const {
 const reportsModel = require("../../models/reportsModel");
 const inspectionModel = require("../../models/inspectionModel");
 const InstantWithdrawal = require("../../models/instantWithdrawalModel");
+const { SEND_NOTIFICATION_FUNCTION } = require("../../controllers/notificationController");
+const transport = require("../../helpers/mail.helper");
+const ops_template = require("../../utils/tpl/ops.mail.tpl");
 
 /**
  * @description Endpoint to host a vehicle
@@ -44,7 +47,7 @@ ownerRoute.post(
   isVerifiedUser,
   isUserType("owner"),
   async (req, res) => {
-    const { userId } = res.locals;
+    const { userId, email, full_name } = res.locals;
 
     try {
       const schema = Joi.object().keys({
@@ -77,18 +80,34 @@ ownerRoute.post(
           message: error.details[0].message,
         });
       }
+      const host = await hostVehicle({ userId, vehicle: req.body });
+      if (!host){   
+      return res.status(400).send({
+        ok: false,
+        message: "Error Hosting vehicle",
+      });
+      }
 
-      if (hostVehicle(req.body, userId))
+// Create notification for vehicle hosting
+SEND_NOTIFICATION_FUNCTION(userId, `Your vehicle: ${req.body.make} ${req.body.model} :${req.body.vehicle_number}, has been hosted and is pending verification`);
+        transport.sendMail({
+        from: "chida.codes@gmail.com",
+        to: email,
+        subject: "Your New Bike Has Been Successfully Uploaded",
+        html: ops_template.vehicle_added({
+          name: full_name.split(" ")[0],
+          model: req.body.make + " " + req.body.model,
+          number: req.body.vehicle_number
+        }),
+      })
+
+
         return res.status(201).send({
           ok: true,
           message: "Vehicle hosted successfully",
           vehicle: hostVehicle.vehicle,
         });
 
-      return res.status(400).send({
-        ok: false,
-        message: "Error Hosting vehicle",
-      });
     } catch (error) {
       console.log(error);
       return res.status(500).send({

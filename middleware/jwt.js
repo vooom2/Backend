@@ -56,6 +56,7 @@ async function jwtValidator(req, res, next) {
       accountType,
       account_verified: user.account_verified,
       email: user.email,
+      full_name: user.full_name,
     };
     next();
   } catch (error) {

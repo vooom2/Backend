@@ -216,7 +216,7 @@ userAuth.post("/owner/register", async (req, res) => {
       transport.sendMail({
         from: "chida.codes@gmail.com",
         to: email,
-        subject: "Verify your email",
+        subject: "Welcome to Vooom! Start Your Journey with Us",
         html: onboarding_template.owner({
           name: full_name, otp}),
       }, (error, info) => {
@@ -320,7 +320,7 @@ userAuth.post("/rider/register", async (req, res) => {
      await  transport.sendMail({
         from: "chida.codes@gmail.com",
         to: email,
-        subject: "Verify your email",
+        subject: "Welcome to Vooom! Optimize Your Logistics with Us",
         html: onboarding_template.rider({
           name: full_name, otp: otp}),
       }, (error, info) => {
