@@ -182,6 +182,17 @@ userAuth.post("/owner/register", async (req, res) => {
         .status(409)
         .send({ okay: false, message: "Email or phone number already exists" });
     }
+
+    const existingRider = await riderModel.findOne({ email: email });
+
+    if (existingRider) {
+      return res.status(409).send({
+        okay: false,
+        message: "Email already used for a rider account",
+      });
+    }
+
+
     const otp = Math.floor(1000 + Math.random() * 90000);
     let userObject = {
       full_name,
@@ -282,6 +293,8 @@ userAuth.post("/rider/register", async (req, res) => {
         .status(409)
         .send({ okay: false, message: "Email or phone number already exists" });
     }
+
+    
 
     const otp = Math.floor(1000 + Math.random() * 90000);
 
